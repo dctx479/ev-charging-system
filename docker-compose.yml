@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: ev-charging-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: ev_charging
+      MYSQL_USER: evuser
+      MYSQL_PASSWORD: evpass123
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - ev-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: ev-charging-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - ev-network
+
+  # RabbitMQ 消息队列（可选）
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: ev-charging-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    ports:
+      - "5672:5672"   # AMQP 端口
+      - "15672:15672" # 管理界面
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - ev-network
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+
+networks:
+  ev-network:
+    driver: bridge

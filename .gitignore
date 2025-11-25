@@ -1,0 +1,73 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+.idea/
+.settings/
+.classpath
+.project
+
+# Node / Frontend
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# AI Models
+ai-service/models/*.pkl
+*.h5
+*.pb
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build
+build/
+dist/
+out/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.bak

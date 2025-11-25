@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: charging-system
+
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ev_charging?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123456
+
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+# JWT配置
+jwt:
+  secret: ev-charging-station-management-system-jwt-secret-key-2024
+  expiration: 86400000  # 24小时（毫秒）
+
+# 日志配置
+logging:
+  level:
+    com.ev.charging: debug
+    org.springframework.web: info
+    org.hibernate.SQL: debug
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %msg%n'
