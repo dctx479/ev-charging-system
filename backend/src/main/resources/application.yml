@@ -1,0 +1,187 @@
+spring:
+  application:
+    name: charging-system
+
+  # Jackson 日期序列化配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
+
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ev_charging_system}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_unicode_ci
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    # HikariCP 连接池配置
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:validate}
+    show-sql: ${SHOW_SQL:false}  # 显示SQL语句（开发环境可设为true以验证N+1查询优化）
+    properties:
+      hibernate:
+        format_sql: true  # 格式化SQL语句，便于阅读
+        use_sql_comments: true  # 显示SQL注释，便于调试
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        connection:
+          charSet: UTF-8
+          characterEncoding: UTF-8
+          useUnicode: true
+        # 批量操作优化
+        jdbc:
+          batch_size: 50  # JDBC批量大小
+          batch_versioned_data: true  # 启用批量版本化数据更新
+        order_inserts: true  # 按插入顺序排序
+        order_updates: true  # 按更新顺序排序
+
+  # Redis配置
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: ${REDIS_MAX_ACTIVE:50}
+          max-wait: 3000ms
+          max-idle: ${REDIS_MAX_IDLE:20}
+          min-idle: ${REDIS_MIN_IDLE:5}
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # RabbitMQ配置
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:}
+    virtual-host: /
+    # 消息发送确认
+    publisher-confirm-type: correlated  # 发布确认
+    publisher-returns: true             # 发布返回
+    # 消费者配置
+    listener:
+      simple:
+        acknowledge-mode: manual        # 手动确认
+        prefetch: 1                     # 预取数量
+        retry:
+          enabled: false                # 禁用Spring Retry，使用手动重试（basicNack+requeue）避免与手动ACK冲突
+          max-attempts: 3               # 最大重试次数（已禁用，仅保留配置备注）
+          initial-interval: 1000ms      # 初始重试间隔
+          max-interval: 10000ms         # 最大重试间隔
+          multiplier: 2                 # 重试间隔倍数
+    # 连接超时配置
+    connection-timeout: 15000ms
+    # 模板配置
+    template:
+      mandatory: true                   # 消息必达
+      retry:
+        enabled: true
+        max-attempts: 3
+
+# 服务器配置
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+      force-response: true
+
+# JWT配置
+# 安全修复: JWT密钥必须通过环境变量设置，不提供弱默认值
+jwt:
+  secret: ${JWT_SECRET:}
+  expiration: ${JWT_EXPIRATION:86400000}  # 24小时（毫秒）
+
+# AI服务配置
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:5000}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:5000}  # 连接超时（毫秒）
+    read-timeout: ${AI_READ_TIMEOUT:10000}    # 读取超时（毫秒）
+
+# 高德地图配置
+amap:
+  api:
+    key: ${AMAP_API_KEY:}  # 高德地图API Key，通过环境变量设置
+
+# 订单超时配置
+order:
+  timeout:
+    charging-hours: 4      # 充电超时时间（小时）- 超过此时间未完成的订单将标记为异常
+    payment-hours: 24      # 支付超时时间（小时）- 超过此时间未支付的订单将自动取消
+
+# 日志配置
+logging:
+  level:
+    com.ev.charging: ${LOG_LEVEL:info}
+    org.springframework.web: info
+    # SQL日志配置（用于验证N+1查询优化）
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:warn}  # 开发环境建议设为DEBUG查看SQL
+    org.hibernate.type.descriptor.sql.BasicBinder: ${SQL_PARAM_LOG_LEVEL:warn}  # 查看SQL参数绑定
+    org.hibernate.orm.jdbc.bind: ${SQL_BIND_LOG_LEVEL:warn}  # 查看JDBC绑定
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %msg%n'
+
+# 开发环境配置（用于本地开发和N+1查询验证）
+# 在IDE中设置以下环境变量以启用详细SQL日志：
+# SHOW_SQL=true
+# SQL_LOG_LEVEL=DEBUG
+# SQL_PARAM_LOG_LEVEL=TRACE
+# SQL_BIND_LOG_LEVEL=TRACE
+
+# Spring Actuator监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true  # 启用liveness和readiness探针
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${ENVIRONMENT:production}
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true  # 启用HTTP请求延迟直方图
+      slo:
+        http.server.requests: 100ms,200ms,500ms,1s,2s  # SLO阈值
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+    diskspace:
+      enabled: true

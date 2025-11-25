@@ -1,0 +1,131 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+.idea/
+.settings/
+.classpath
+.project
+
+# Node / Frontend
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# AI Models
+ai-service/models/*.pkl
+*.h5
+*.pb
+
+# Environment - 所有环境变量文件（包含敏感信息）
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.development.local
+.env.production.local
+*/.env
+*/.env.local
+*/.env.*.local
+
+# 不排除 .env.example 模板文件
+!.env.example
+!*/.env.example
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build
+build/
+dist/
+out/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.bak
+nul
+
+# Test files
+**/test_*.py
+**/*_test.py
+
+# Backup files
+*.backup
+*.old
+
+# Cache directories
+.cache/
+**/.vite/
+**/node_modules/.cache/
+
+# Claude Code 相关文件
+.claude/
+.claude.json
+.claude.json.backup
+CLAUDE.md
+CODE_REVIEW_FIXES.md
+.claude-*
+.claude-session*
+.claude-history*
+
+# 测试指南文档
+QUICK_TEST_GUIDE.md
+
+# 任务文档
+第一部分_基础架构与用户端.md
+第二部分_运营商后台与AI预测.md
+第三部分_订单系统与创新服务.md
+第四部分_能源管理与社交功能.md
+
+# 完成报告文档和中文报告文档
+*_完成报告.md
+*_实现报告.md
+第三部分_订单系统与创新服务_完成报告.md
+第四部分_实现报告.md
+下单流程优化报告.md
+下单流程对比.md
+
+# 任何包含"报告"或中文"部分"字样的文档
+*报告*.md
+!README.md
+!*_REPORT.md
+

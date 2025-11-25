@@ -1,0 +1,25 @@
+# Docker ignore patterns
+.git/
+.gitignore
+*.md
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Build artifacts
+**/node_modules/
+**/dist/
+**/target/
+**/__pycache__/
+**/*.pyc
+**/venv/
+**/env/
+
+# Temp files
+*.tmp
+*.bak
+*.swp

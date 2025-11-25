@@ -1,0 +1,71 @@
+# 将以下配置添加到 application.yml 文件中
+
+# Redis缓存优化配置
+cache:
+  # TTL配置（秒）- 分层缓存策略
+  ttl:
+    # ===== 实时数据层（5-30秒） =====
+    pile-status: 10           # 充电桩状态
+    queue-status: 15          # 排队状态
+    order-status: 20          # 订单状态
+    v2g-status: 20            # V2G状态
+    energy-realtime: 30       # 能源实时数据
+
+    # ===== 准实时数据层（1-10分钟） =====
+    station-list: 300         # 充电站列表（5分钟）
+    pile-health: 600          # 充电桩健康度（10分钟）
+    user-current-order: 300   # 用户当前订单（5分钟）
+    queue-list: 180           # 排队列表（3分钟）
+    nearby-search: 420        # 周边搜索（7分钟）
+
+    # ===== 稳定数据层（30分钟-2小时） =====
+    user-info: 1800           # 用户信息（30分钟）
+    station-detail: 3600      # 充电站详情（1小时）
+    credit-products: 7200     # 积分商品（2小时）
+    order-list: 1800          # 订单列表（30分钟）
+    credit-records: 3600      # 积分记录（1小时）
+    valet-chargers: 3600      # 代充师傅（1小时）
+
+    # ===== 静态数据层（4-24小时） =====
+    poi-search: 14400         # POI搜索（4小时）
+    system-config: 86400      # 系统配置（24小时）
+    dictionary: 86400         # 字典数据（24小时）
+    operator-info: 43200      # 运营商信息（12小时）
+    fault-types: 86400        # 故障类型（24小时）
+
+    # ===== 特殊配置 =====
+    null-value: 60            # 空值缓存（1分钟，防穿透）
+    lock-expire: 10           # 分布式锁过期时间（10秒）
+    hot-key-extension: 300    # 热点key延长时间（5分钟）
+
+  # 防护机制配置
+  protection:
+    enable-breakdown-protection: true    # 启用缓存击穿防护（分布式锁）
+    enable-penetration-protection: true  # 启用缓存穿透防护（空值缓存）
+    enable-avalanche-protection: true    # 启用缓存雪崩防护（TTL随机化）
+    enable-hot-key-protection: true      # 启用热点key保护
+    ttl-random-range: 0.2                # TTL随机化范围（±20%）
+    hot-key-threshold: 100               # 热点key访问阈值（每分钟）
+    hot-key-window: 60                   # 热点key检测窗口（秒）
+
+  # 预热策略配置
+  warmup:
+    enable-startup-warmup: true          # 启用启动时预热
+    enable-scheduled-refresh: true       # 启用定时刷新
+    refresh-interval: 30                 # 刷新间隔（分钟）
+    items:
+      active-stations: true              # 预热营业中的充电站
+      station-details: true              # 预热充电站详情
+      system-configs: true               # 预热系统配置
+      credit-products: true              # 预热积分商品
+      operator-info: false               # 预热运营商信息（可选）
+      popular-poi: false                 # 预热热门POI（可选）
+
+  # 监控配置
+  monitor:
+    enabled: true                        # 启用缓存监控
+    enable-hit-rate-stats: true          # 启用命中率统计
+    enable-hot-key-tracking: true        # 启用热点key追踪
+    stats-window: 300                    # 统计窗口大小（秒）
+    slow-query-threshold: 100            # 慢查询阈值（毫秒）
+    enable-performance-log: false        # 启用性能日志（默认关闭）

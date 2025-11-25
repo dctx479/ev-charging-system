@@ -1,0 +1,372 @@
+services:
+  # ============================================
+  # 基础设施服务
+  # ============================================
+
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: ev-charging-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ev_charging_system}
+      MYSQL_USER: ${MYSQL_USER:-evuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --character-set-client-handshake=FALSE
+      - --init-connect=SET NAMES utf8mb4
+      - --default-time-zone=+08:00
+      - --max-connections=500
+    networks:
+      - ev-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: ev-charging-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - ev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # RabbitMQ 消息队列
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: ev-charging-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - ev-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # 应用服务
+  # ============================================
+
+  # Spring Boot 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ev-charging-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      # 数据库配置
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE:-ev_charging_system}
+      DB_USERNAME: ${MYSQL_USER:-evuser}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      # Redis配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # RabbitMQ配置
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin123}
+      # AI服务配置
+      AI_SERVICE_URL: http://ai-service:5000
+      AI_CONNECT_TIMEOUT: ${AI_CONNECT_TIMEOUT:-5000}
+      AI_READ_TIMEOUT: ${AI_READ_TIMEOUT:-10000}
+      # JWT配置 (必须设置)
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      # JPA配置
+      DDL_AUTO: ${DDL_AUTO:-validate}
+      SHOW_SQL: ${SHOW_SQL:-false}
+      # 日志配置
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SQL_LOG_LEVEL: ${SQL_LOG_LEVEL:-warn}
+      # JVM配置
+      JAVA_OPTS: >
+        -Xms512m
+        -Xmx1024m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+HeapDumpOnOutOfMemoryError
+        -XX:HeapDumpPath=/app/logs/heap-dump.hprof
+        -Duser.timezone=Asia/Shanghai
+        -Dfile.encoding=UTF-8
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - ev-network
+    volumes:
+      - backend-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1536M
+        reservations:
+          cpus: '0.5'
+          memory: 768M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Python AI 预测服务
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: ev-charging-ai
+    restart: unless-stopped
+    ports:
+      - "${AI_SERVICE_PORT:-5000}:5000"
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      FLASK_APP: app.py
+      PYTHONUNBUFFERED: 1
+      # CORS配置
+      CORS_ORIGINS: "http://localhost:5173,http://localhost:5174,http://backend:8080"
+      # 限流配置
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
+      # API密钥认证（可选）
+      AI_API_KEY_ENABLED: ${AI_API_KEY_ENABLED:-false}
+      AI_API_KEY: ${AI_API_KEY:-}
+    networks:
+      - ev-network
+    volumes:
+      - ./ai-service/models:/app/models:ro
+      - ai-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Vue3 用户前端 (开发模式)
+  frontend-user:
+    build:
+      context: ./frontend-user
+      dockerfile: Dockerfile
+    container_name: ev-charging-frontend-user
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_USER_PORT:-5173}:5173"
+    environment:
+      DOCKER_ENV: "true"
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8080/ws}
+      VITE_API_TARGET: http://backend:8080
+      VITE_WS_TARGET: ws://backend:8080
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ev-network
+    volumes:
+      - ./frontend-user/src:/app/src:cached
+      - ./frontend-user/vite.config.js:/app/vite.config.js:ro
+      - frontend-user-modules:/app/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Vue3 管理后台前端 (开发模式)
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    container_name: ev-charging-frontend-admin
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_ADMIN_PORT:-5174}:5174"
+    environment:
+      DOCKER_ENV: "true"
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8080/ws}
+      VITE_API_TARGET: http://backend:8080
+      VITE_WS_TARGET: ws://backend:8080
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ev-network
+    volumes:
+      - ./frontend-admin/src:/app/src:cached
+      - ./frontend-admin/vite.config.js:/app/vite.config.js:ro
+      - frontend-admin-modules:/app/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5174/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================
+# 数据卷配置
+# ============================================
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  backend-logs:
+    driver: local
+  ai-logs:
+    driver: local
+  frontend-user-modules:
+    driver: local
+  frontend-admin-modules:
+    driver: local
+
+# ============================================
+# 网络配置
+# ============================================
+networks:
+  ev-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,148 @@
+package com.ev.charging.vo;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+/**
+ * 用户信息响应VO
+ *
+ * 特点：
+ * - 不包含敏感字段（password, idCard）
+ * - 只包含需要展示给前端的字段
+ * - 用于API响应，保护用户隐私
+ *
+ * 使用场景：
+ * - 用户信息查询（/users/me, /auth/user/info）
+ * - 用户列表返回（管理后台）
+ * - 用户注册返回
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserVO {
+
+    /**
+     * 用户ID
+     */
+    private Long id;
+
+    /**
+     * 用户名
+     */
+    private String username;
+
+    /**
+     * 昵称
+     */
+    private String nickname;
+
+    /**
+     * 手机号
+     */
+    private String phone;
+
+    /**
+     * 邮箱
+     */
+    private String email;
+
+    /**
+     * 用户类型：USER-普通用户，ADMIN-管理员，OPERATOR-运营商，VALET_CHARGER-代充师傅
+     */
+    private String userType;
+
+    /**
+     * 头像URL
+     */
+    private String avatar;
+
+    /**
+     * 车辆型号
+     */
+    private String carModel;
+
+    /**
+     * 车牌号
+     */
+    private String carPlate;
+
+    /**
+     * 电池容量(kWh)
+     */
+    private BigDecimal batteryCapacity;
+
+    /**
+     * 账户余额
+     */
+    private BigDecimal balance;
+
+    /**
+     * 碳积分余额
+     */
+    private Integer carbonCredits;
+
+    /**
+     * 账户状态：ACTIVE-正常，DISABLED-禁用，PENDING-待审核，REJECTED-已拒绝，SUSPENDED-已停用
+     */
+    private String status;
+
+    /**
+     * 审核拒绝原因
+     */
+    private String rejectReason;
+
+    /**
+     * 服务区域（代充师傅专用）
+     */
+    private String serviceArea;
+
+    /**
+     * 创建时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
+
+    /**
+     * 更新时间
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateTime;
+
+    /**
+     * 从 User 实体转换为 VO
+     *
+     * 说明：该方法会自动过滤敏感字段（password、idCard）
+     */
+    public static UserVO fromUser(com.ev.charging.entity.User user) {
+        if (user == null) {
+            return null;
+        }
+
+        return UserVO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .nickname(user.getNickname())
+                .phone(user.getPhone())
+                .email(user.getEmail())
+                .userType(user.getUserType())
+                .avatar(user.getAvatar())
+                .carModel(user.getCarModel())
+                .carPlate(user.getCarPlate())
+                .batteryCapacity(user.getBatteryCapacity())
+                .balance(user.getBalance())
+                .carbonCredits(user.getCarbonCredits())
+                .status(user.getStatus())
+                .rejectReason(user.getRejectReason())
+                .serviceArea(user.getServiceArea())
+                .createTime(user.getCreateTime())
+                .updateTime(user.getUpdateTime())
+                .build();
+    }
+}

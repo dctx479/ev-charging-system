@@ -1,0 +1,89 @@
+package com.ev.charging.controller.admin;
+
+import com.ev.charging.common.Result;
+import com.ev.charging.service.StatisticsService;
+import com.ev.charging.vo.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+/**
+ * 统计数据控制器
+ */
+@Tag(name = "数据统计", description = "运营数据统计、趋势分析、排行榜")
+@Slf4j
+@RestController
+@RequestMapping(value = "/admin/statistics", produces = "application/json;charset=UTF-8")
+public class StatisticsController {
+
+    @Autowired
+    private StatisticsService statisticsService;
+
+    /**
+     * 获取仪表板数据
+     */
+    @GetMapping("/dashboard")
+    public Result<DashboardVO> getDashboard() {
+        log.info("查询仪表板数据");
+        DashboardVO dashboard = statisticsService.getDashboardData();
+        return Result.success(dashboard);
+    }
+
+    /**
+     * 获取充电趋势（最近N天）
+     */
+    @GetMapping("/trend")
+    public Result<ChargeTrendVO> getChargeTrend(@RequestParam(defaultValue = "7") Integer days) {
+        log.info("查询充电趋势: days={}", days);
+        ChargeTrendVO trend = statisticsService.getChargeTrend(days);
+        return Result.success(trend);
+    }
+
+    /**
+     * 获取充电桩状态分布
+     */
+    @GetMapping("/pile-status")
+    public Result<PileStatusDistributionVO> getPileStatusDistribution() {
+        log.info("查询充电桩状态分布");
+        PileStatusDistributionVO distribution = statisticsService.getPileStatusDistribution();
+        return Result.success(distribution);
+    }
+
+    /**
+     * 获取站点收入排行
+     */
+    @GetMapping("/station-ranking")
+    public Result<List<StationRankingVO>> getStationRanking(@RequestParam(defaultValue = "10") Integer limit) {
+        log.info("查询站点排行: limit={}", limit);
+        List<StationRankingVO> ranking = statisticsService.getStationRanking(limit);
+        return Result.success(ranking);
+    }
+
+    /**
+     * 获取订单统计
+     */
+    @GetMapping("/orders")
+    public Result<Map<String, Object>> getOrderStatistics(
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        log.info("查询订单统计: startDate={}, endDate={}", startDate, endDate);
+        Map<String, Object> stats = statisticsService.getOrderStatistics(startDate, endDate);
+        return Result.success(stats);
+    }
+
+    /**
+     * 获取收入统计
+     */
+    @GetMapping("/revenue")
+    public Result<Map<String, Object>> getRevenueStatistics(
+            @RequestParam(defaultValue = "day") String period) {
+        log.info("查询收入统计: period={}", period);
+        Map<String, Object> stats = statisticsService.getRevenueStatistics(period);
+        return Result.success(stats);
+    }
+}

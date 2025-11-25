@@ -1,0 +1,417 @@
+# Prometheus 告警规则
+# EV Charging System Alert Rules
+
+groups:
+  # 应用服务告警组
+  - name: application
+    interval: 30s
+    rules:
+      # 应用服务宕机告警
+      - alert: ApplicationDown
+        expr: up{job="ev-charging-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "充电系统后端服务宕机"
+          description: "{{ $labels.instance }} 已宕机超过1分钟，请立即检查！"
+          runbook_url: "https://wiki.example.com/runbook/app-down"
+
+      # HTTP 5xx 错误率过高
+      - alert: HighErrorRate
+        expr: |
+          rate(http_server_requests_seconds_count{status=~"5.."}[5m])
+          /
+          rate(http_server_requests_seconds_count[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: reliability
+        annotations:
+          summary: "HTTP 5xx 错误率过高"
+          description: "5xx 错误率为 {{ $value | humanizePercentage }}，超过 5% 阈值"
+
+      # HTTP 4xx 错误率过高
+      - alert: HighClientErrorRate
+        expr: |
+          rate(http_server_requests_seconds_count{status=~"4.."}[5m])
+          /
+          rate(http_server_requests_seconds_count[5m]) > 0.15
+        for: 10m
+        labels:
+          severity: info
+          category: reliability
+        annotations:
+          summary: "HTTP 4xx 错误率过高"
+          description: "4xx 错误率为 {{ $value | humanizePercentage }}，可能存在客户端问题"
+
+      # API 响应时间过慢 (P95)
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_server_requests_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "API 响应时间过慢"
+          description: "P95 响应时间为 {{ $value | humanizeDuration }}，超过 1 秒阈值"
+
+      # API 响应时间极慢 (P95 > 3s)
+      - alert: VeryHighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_server_requests_seconds_bucket[5m])
+          ) > 3
+        for: 3m
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: "API 响应时间极慢"
+          description: "P95 响应时间为 {{ $value | humanizeDuration }}，超过 3 秒，严重影响用户体验"
+
+      # QPS 异常下降
+      - alert: LowQPS
+        expr: |
+          rate(http_server_requests_seconds_count[5m]) < 1
+          and
+          rate(http_server_requests_seconds_count[5m]) offset 1h > 10
+        for: 10m
+        labels:
+          severity: warning
+          category: availability
+        annotations:
+          summary: "QPS 异常下降"
+          description: "当前 QPS 为 {{ $value | humanize }}，相比 1 小时前显著下降"
+
+      # JVM 堆内存使用率过高
+      - alert: HighJVMMemoryUsage
+        expr: |
+          (jvm_memory_used_bytes{area="heap"}
+          /
+          jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "JVM 堆内存使用率过高"
+          description: "堆内存使用率为 {{ $value | humanizePercentage }}，超过 85%"
+
+      # JVM 堆内存使用率极高
+      - alert: CriticalJVMMemoryUsage
+        expr: |
+          (jvm_memory_used_bytes{area="heap"}
+          /
+          jvm_memory_max_bytes{area="heap"}) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          category: resource
+        annotations:
+          summary: "JVM 堆内存使用率极高"
+          description: "堆内存使用率为 {{ $value | humanizePercentage }}，超过 95%，可能即将 OOM"
+
+      # GC 频繁
+      - alert: FrequentGC
+        expr: rate(jvm_gc_pause_seconds_count[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "GC 频繁"
+          description: "GC 频率为 {{ $value | humanize }} 次/秒，可能影响应用性能"
+
+      # GC 耗时过长
+      - alert: LongGCPause
+        expr: |
+          rate(jvm_gc_pause_seconds_sum[5m])
+          /
+          rate(jvm_gc_pause_seconds_count[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "GC 平均耗时过长"
+          description: "GC 平均耗时为 {{ $value | humanizeDuration }}，超过 500ms"
+
+      # 线程数过多
+      - alert: HighThreadCount
+        expr: jvm_threads_live_threads > 300
+        for: 10m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "线程数过多"
+          description: "当前线程数为 {{ $value }}，可能存在线程泄漏"
+
+  # 数据库告警组
+  - name: database
+    interval: 30s
+    rules:
+      # MySQL 连接数过高
+      - alert: HighMySQLConnections
+        expr: mysql_global_status_threads_connected > 100
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "MySQL 连接数过高"
+          description: "当前连接数为 {{ $value }}，超过 100"
+
+      # MySQL 连接数接近上限
+      - alert: MySQLConnectionsNearLimit
+        expr: |
+          mysql_global_status_threads_connected
+          /
+          mysql_global_variables_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: critical
+          category: resource
+        annotations:
+          summary: "MySQL 连接数接近上限"
+          description: "连接数使用率为 {{ $value | humanizePercentage }}，接近上限"
+
+      # MySQL 慢查询过多
+      - alert: HighSlowQueries
+        expr: rate(mysql_global_status_slow_queries[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "MySQL 慢查询过多"
+          description: "慢查询速率为 {{ $value | humanize }} 次/秒"
+
+      # MySQL 主从复制延迟
+      - alert: MySQLReplicationLag
+        expr: mysql_slave_status_seconds_behind_master > 10
+        for: 2m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "MySQL 主从复制延迟过高"
+          description: "主从延迟为 {{ $value | humanizeDuration }}，超过 10 秒"
+
+      # MySQL 表锁等待
+      - alert: MySQLTableLocks
+        expr: rate(mysql_global_status_table_locks_waited[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "MySQL 表锁等待频繁"
+          description: "表锁等待速率为 {{ $value | humanize }} 次/秒"
+
+  # Redis 告警组
+  - name: redis
+    interval: 30s
+    rules:
+      # Redis 连接数过高
+      - alert: HighRedisConnections
+        expr: redis_connected_clients > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "Redis 连接数过高"
+          description: "当前连接数为 {{ $value }}，超过 1000"
+
+      # Redis 内存使用率过高
+      - alert: HighRedisMemoryUsage
+        expr: |
+          redis_memory_used_bytes
+          /
+          redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "Redis 内存使用率过高"
+          description: "内存使用率为 {{ $value | humanizePercentage }}，超过 85%"
+
+      # Redis 缓存命中率低
+      - alert: LowRedisCacheHitRate
+        expr: |
+          rate(redis_keyspace_hits_total[5m])
+          /
+          (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Redis 缓存命中率低"
+          description: "缓存命中率为 {{ $value | humanizePercentage }}，低于 80%"
+
+      # Redis 持久化失败
+      - alert: RedisPersistenceFailure
+        expr: redis_last_save_time < (time() - 3600)
+        for: 5m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "Redis 持久化超过 1 小时未执行"
+          description: "上次持久化时间为 {{ $value | humanizeTimestamp }}"
+
+  # RabbitMQ 告警组
+  - name: rabbitmq
+    interval: 30s
+    rules:
+      # RabbitMQ 消息堆积
+      - alert: RabbitMQMessageBacklog
+        expr: rabbitmq_queue_messages > 1000
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "RabbitMQ 消息堆积"
+          description: "队列 {{ $labels.queue }} 消息数为 {{ $value }}，超过 1000"
+
+      # RabbitMQ 消费者数量为0
+      - alert: RabbitMQNoConsumers
+        expr: rabbitmq_queue_consumers == 0 and rabbitmq_queue_messages > 0
+        for: 5m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "RabbitMQ 队列无消费者"
+          description: "队列 {{ $labels.queue }} 无消费者但有 {{ $value }} 条消息"
+
+  # 业务指标告警组
+  - name: business
+    interval: 30s
+    rules:
+      # 订单失败率过高
+      - alert: HighOrderFailureRate
+        expr: |
+          rate(orders_failed_total[5m])
+          /
+          rate(orders_created_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "订单失败率过高"
+          description: "订单失败率为 {{ $value | humanizePercentage }}，超过 10%"
+
+      # 订单创建数异常下降
+      - alert: LowOrderCreationRate
+        expr: |
+          rate(orders_created_total[5m]) < 0.1
+          and
+          rate(orders_created_total[5m]) offset 1h > 1
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "订单创建数异常下降"
+          description: "当前订单创建速率为 {{ $value | humanize }} 单/秒，相比 1 小时前显著下降"
+
+      # 充电桩故障率过高
+      - alert: HighPileFaultRate
+        expr: piles_fault / piles_online > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "充电桩故障率过高"
+          description: "故障率为 {{ $value | humanizePercentage }}，超过 10%"
+
+      # 充电桩利用率过低
+      - alert: LowPileUtilization
+        expr: piles_utilization_rate < 0.3
+        for: 30m
+        labels:
+          severity: info
+          category: business
+        annotations:
+          summary: "充电桩利用率过低"
+          description: "利用率为 {{ $value | humanizePercentage }}，低于 30%"
+
+      # 支付失败率过高
+      - alert: HighPaymentFailureRate
+        expr: |
+          rate(payment_failed_total[5m])
+          /
+          (rate(payment_success_total[5m]) + rate(payment_failed_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "支付失败率过高"
+          description: "支付失败率为 {{ $value | humanizePercentage }}，超过 5%"
+
+  # 系统资源告警组
+  - name: system
+    interval: 30s
+    rules:
+      # CPU 使用率过高
+      - alert: HighCPUUsage
+        expr: |
+          (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "CPU 使用率过高"
+          description: "{{ $labels.instance }} CPU 使用率为 {{ $value | humanizePercentage }}，超过 80%"
+
+      # 内存使用率过高
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "内存使用率过高"
+          description: "{{ $labels.instance }} 内存使用率为 {{ $value | humanizePercentage }}，超过 85%"
+
+      # 磁盘使用率过高
+      - alert: HighDiskUsage
+        expr: |
+          (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.*"}
+          /
+          node_filesystem_size_bytes{fstype!~"tmpfs|fuse.*"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "磁盘使用率过高"
+          description: "{{ $labels.instance }} 磁盘使用率为 {{ $value | humanizePercentage }}，超过 85%"
+
+      # 磁盘将在 24 小时内耗尽
+      - alert: DiskWillFillIn24Hours
+        expr: |
+          predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.*"}[1h], 24*3600) < 0
+        for: 30m
+        labels:
+          severity: critical
+          category: resource
+        annotations:
+          summary: "磁盘将在 24 小时内耗尽"
+          description: "{{ $labels.instance }} 磁盘预计将在 24 小时内耗尽"

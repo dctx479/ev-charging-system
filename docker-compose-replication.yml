@@ -1,0 +1,189 @@
+version: '3.8'
+
+# MySQL主从复制Docker Compose配置
+# 快速搭建1主2从的MySQL集群用于开发测试
+#
+# 使用方式:
+# 1. 启动集群: docker-compose -f docker-compose-replication.yml up -d
+# 2. 配置主从: 参考 database/MYSQL_REPLICATION_SETUP.md
+# 3. 验证复制: docker exec -it mysql-slave1 mysql -uroot -p -e "SHOW SLAVE STATUS\G"
+
+services:
+  # ====================
+  # MySQL主库
+  # ====================
+  mysql-master:
+    image: mysql:8.0
+    container_name: mysql-master
+    hostname: mysql-master
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: ev_charging_system
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-master-data:/var/lib/mysql
+      - ./docker/mysql/master/conf:/etc/mysql/conf.d:ro
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    command:
+      - --server-id=1
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --binlog-do-db=ev_charging_system
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - charging-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ====================
+  # MySQL从库1
+  # ====================
+  mysql-slave1:
+    image: mysql:8.0
+    container_name: mysql-slave1
+    hostname: mysql-slave1
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: ev_charging_system
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-slave1-data:/var/lib/mysql
+      - ./docker/mysql/slave1/conf:/etc/mysql/conf.d:ro
+    command:
+      - --server-id=2
+      - --relay-log=mysql-relay-bin
+      - --read-only=1
+      - --super-read-only=1
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - charging-network
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ====================
+  # MySQL从库2
+  # ====================
+  mysql-slave2:
+    image: mysql:8.0
+    container_name: mysql-slave2
+    hostname: mysql-slave2
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: ev_charging_system
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-slave2-data:/var/lib/mysql
+      - ./docker/mysql/slave2/conf:/etc/mysql/conf.d:ro
+    command:
+      - --server-id=3
+      - --relay-log=mysql-relay-bin
+      - --read-only=1
+      - --super-read-only=1
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    networks:
+      - charging-network
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ====================
+  # Redis（保持不变）
+  # ====================
+  redis:
+    image: redis:7-alpine
+    container_name: charging-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --requirepass "" --appendonly yes
+    networks:
+      - charging-network
+    restart: unless-stopped
+
+  # ====================
+  # RabbitMQ（保持不变）
+  # ====================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: charging-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - charging-network
+    restart: unless-stopped
+
+volumes:
+  mysql-master-data:
+    driver: local
+  mysql-slave1-data:
+    driver: local
+  mysql-slave2-data:
+    driver: local
+  redis-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+
+networks:
+  charging-network:
+    driver: bridge
+
+# ====================
+# 快速命令参考
+# ====================
+# 启动所有服务:
+#   docker-compose -f docker-compose-replication.yml up -d
+#
+# 查看服务状态:
+#   docker-compose -f docker-compose-replication.yml ps
+#
+# 查看主库状态:
+#   docker exec -it mysql-master mysql -uroot -proot123456 -e "SHOW MASTER STATUS"
+#
+# 查看从库1状态:
+#   docker exec -it mysql-slave1 mysql -uroot -proot123456 -e "SHOW SLAVE STATUS\G"
+#
+# 查看从库2状态:
+#   docker exec -it mysql-slave2 mysql -uroot -proot123456 -e "SHOW SLAVE STATUS\G"
+#
+# 进入主库容器:
+#   docker exec -it mysql-master mysql -uroot -proot123456 ev_charging_system
+#
+# 停止所有服务:
+#   docker-compose -f docker-compose-replication.yml down
+#
+# 停止并删除数据:
+#   docker-compose -f docker-compose-replication.yml down -v
