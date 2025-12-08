@@ -129,17 +129,23 @@ public class ChargingPileService {
     public ChargingPile updatePile(ChargingPile pile) {
         ChargingPile existing = getPileById(pile.getId());
 
+        // 保存原始值，用于后续比较
+        Long oldStationId = existing.getStationId();
+        String oldStatus = existing.getStatus();
+
         // 更新字段
         BeanUtils.copyProperties(pile, existing, "id", "pileCode", "createTime", "updateTime");
 
         ChargingPile savedPile = pileRepository.save(existing);
 
         // 如果充电站ID或状态发生变化，更新充电站统计
-        if (!existing.getStationId().equals(pile.getStationId()) ||
-                !existing.getStatus().equals(pile.getStatus())) {
-            stationService.updateStationPileCount(existing.getStationId());
-            if (!existing.getStationId().equals(pile.getStationId())) {
-                stationService.updateStationPileCount(pile.getStationId());
+        if (!oldStationId.equals(existing.getStationId()) ||
+                !oldStatus.equals(existing.getStatus())) {
+            // 更新原充电站统计
+            stationService.updateStationPileCount(oldStationId);
+            // 如果充电站ID变化，还需要更新新充电站统计
+            if (!oldStationId.equals(existing.getStationId())) {
+                stationService.updateStationPileCount(existing.getStationId());
             }
         }
 

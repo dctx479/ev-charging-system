@@ -34,7 +34,7 @@ public class ChargingPile {
     /**
      * 充电桩名称
      */
-    @Column(nullable = false, length = 100)
+    @Column(name = "pile_name", nullable = false, length = 100)
     private String name;
 
     /**

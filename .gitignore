@@ -71,3 +71,8 @@ tmp/
 temp/
 *.tmp
 *.bak
+
+# Claude AI
+CLAUDE.md
+CODE_REVIEW_FIXES.md
+.claude/
