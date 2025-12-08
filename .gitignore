@@ -36,10 +36,21 @@ ai-service/models/*.pkl
 *.h5
 *.pb
 
-# Environment
+# Environment - 所有环境变量文件（包含敏感信息）
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.development.local
+.env.production.local
+*/.env
+*/.env.local
+*/.env.*.local
+
+# 不排除 .env.example 模板文件
+!.env.example
+!*/.env.example
 
 # Database
 *.db

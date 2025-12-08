@@ -3,8 +3,8 @@
  * 需要在 index.html 中引入高德地图 JS API
  */
 
-// 高德地图 API Key（需要替换为实际的 Key）
-export const AMAP_KEY = '75872f381f507dedf5d08acf84ce40f1'
+// 高德地图 API Key（从环境变量读取）
+export const AMAP_KEY = import.meta.env.VITE_AMAP_KEY || ''
 
 /**
  * 初始化地图

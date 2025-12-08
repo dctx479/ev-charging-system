@@ -333,15 +333,23 @@ npm run dev
    - 3306：MySQL
    - 6379：Redis
 
-3. **密码配置**：
-   - MySQL 默认密码：root123456
+3. **环境变量配置**：
+   - 在项目根目录创建 `.env` 文件（已在 .gitignore 中）
+   - 配置示例：
+     ```env
+     DB_PASSWORD=your-database-password
+     REDIS_PASSWORD=your-redis-password
+     JWT_SECRET=your-jwt-secret-key
+     ```
+   - MySQL 密码：从环境变量 `${DB_PASSWORD}` 读取
    - JWT Secret：在 application.yml 中配置
-   - 测试账号：admin / 123456
+   - 测试账号：admin / 请自行设置
 
 4. **开发建议**：
    - 使用 Postman 测试 API
    - 前端使用 Chrome DevTools 移动设备模拟器
    - 查看各子项目的 README.md 了解详细信息
+   - **切勿将密码硬编码到代码或配置文件中**
 
 ## 技术支持
 

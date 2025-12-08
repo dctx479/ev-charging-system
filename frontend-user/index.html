@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>充电站管理系统 - 用户端</title>
-  <!-- 高德地图 JS API -->
+  <!-- 高德地图 JS API - 请在 .env.local 中配置 VITE_AMAP_KEY -->
   <script type="text/javascript">
     window._AMapSecurityConfig = {
-      securityJsCode: 'your-security-code-here' // 高德地图安全密钥（可选）
+      securityJsCode: '%VITE_AMAP_SECURITY_CODE%' // 高德地图安全密钥
     }
   </script>
-  <script src="https://webapi.amap.com/maps?v=2.0&key=75872f381f507dedf5d08acf84ce40f1&plugin=AMap.Geolocation"></script>
+  <script src="https://webapi.amap.com/maps?v=2.0&key=%VITE_AMAP_KEY%&plugin=AMap.Geolocation"></script>
 </head>
 <body>
   <div id="app"></div>

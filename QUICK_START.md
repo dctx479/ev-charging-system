@@ -68,7 +68,9 @@ docker-compose ps
 
 ```bash
 # 方式1: 使用 MySQL 客户端
-mysql -h localhost -P 3306 -u root -proot123456
+mysql -h localhost -P 3306 -u root -p
+
+# 系统会提示输入密码，请输入您在安装MySQL时设置的密码
 
 # 进入MySQL后执行
 CREATE DATABASE IF NOT EXISTS ev_charging CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -78,7 +80,9 @@ USE ev_charging;
 SOURCE ./database/init.sql;
 ```
 
-**注意**: 由于项目使用 JPA 自动建表（`ddl-auto: update`），首次启动后端服务时会自动创建表结构。
+**注意**:
+1. 由于项目使用 JPA 自动建表（`ddl-auto: update`），首次启动后端服务时会自动创建表结构。
+2. 请确保在 `.env` 文件中配置了数据库密码，不要在命令行中使用 `-p密码` 的方式直接输入明文密码。
 
 ---
 
@@ -87,8 +91,9 @@ SOURCE ./database/init.sql;
 #### 1. 安装 MySQL 8.0
 
 1. 下载并安装 MySQL 8.0
-2. 设置 root 密码为 `root123456`（或修改 `backend/src/main/resources/application.yml` 中的配置）
-3. 启动 MySQL 服务
+2. 设置 root 密码（建议使用强密码，并保存到 `.env` 文件中）
+3. 在 `backend/src/main/resources/application.yml` 中配置相同的密码
+4. 启动 MySQL 服务
 
 **Windows 启动命令**:
 ```bash
@@ -97,7 +102,8 @@ net start MySQL80
 
 **验证 MySQL 运行**:
 ```bash
-mysql -u root -proot123456 -e "SHOW DATABASES;"
+mysql -u root -p -e "SHOW DATABASES;"
+# 系统会提示输入密码
 ```
 
 #### 2. 创建数据库
@@ -137,12 +143,20 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/ev_charging?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: root123456  # 确保与您的MySQL密码一致
+    password: ${DB_PASSWORD}  # 从环境变量中获取，不要硬编码密码
 
   data:
     redis:
       host: localhost
       port: 6379
+      password: ${REDIS_PASSWORD:}  # 可选，如果Redis设置了密码
+```
+
+**注意**：请在项目根目录创建 `.env` 文件（已在 .gitignore 中），配置以下环境变量：
+```env
+DB_PASSWORD=your-database-password
+REDIS_PASSWORD=your-redis-password
+JWT_SECRET=your-jwt-secret-key
 ```
 
 ### 3. 安装依赖并启动
@@ -296,10 +310,11 @@ VALUES
 
 2. 验证密码是否正确:
    ```bash
-   mysql -u root -proot123456
+   mysql -u root -p
+   # 输入您在安装时设置的密码
    ```
 
-3. 检查 `application.yml` 中的配置是否与实际一致
+3. 检查 `application.yml` 中的配置是否与实际一致，确保密码从环境变量中正确读取
 
 ---
 

@@ -76,6 +76,7 @@ goto MENU
 :START_DOCKER
 echo.
 echo [Docker服务] 正在启动 MySQL 和 Redis...
+echo 注意: 请确保已配置 .env 文件中的数据库密码
 docker-compose up -d mysql redis
 echo.
 echo 等待服务启动（10秒）...
@@ -90,15 +91,16 @@ echo.
 echo [数据库初始化]
 echo 请确保 MySQL 已经启动！
 echo.
-set /p confirm="确认初始化数据库? (Y/N): "
-if /i not "%confirm%"=="Y" goto MENU
-
+echo 注意: 请从 .env 文件获取数据库密码
+echo 命令格式: mysql -h localhost -P 3306 -u root -p^<password^> ^< database\init.sql
+echo.
+set /p db_password="请输入数据库密码: "
 echo 正在初始化数据库...
-mysql -h localhost -P 3306 -u root -proot123456 < database\init.sql
+mysql -h localhost -P 3306 -u root -p%db_password% < database\init.sql
 if %errorlevel% equ 0 (
     echo 数据库初始化成功！
 ) else (
-    echo 数据库初始化失败！请检查 MySQL 连接。
+    echo 数据库初始化失败！请检查 MySQL 连接和密码。
 )
 echo.
 pause

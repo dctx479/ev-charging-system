@@ -258,12 +258,21 @@ docker-compose up -d mysql
 
 **方式二：本地安装**
 - 安装 MySQL 8.0
-- 设置密码: root123456
+- 设置 root 密码并配置到 `.env` 文件中
 - 创建数据库: ev_charging
 
 **初始化数据**:
 ```bash
-mysql -u root -proot123456 < database/init.sql
+# 注意：请先在 .env 文件中配置 DB_PASSWORD 环境变量
+mysql -u root -p < database/init.sql
+# 系统会提示输入密码
+```
+
+**环境变量配置**（`.env` 文件）:
+```env
+DB_PASSWORD=your-database-password
+REDIS_PASSWORD=your-redis-password
+JWT_SECRET=your-jwt-secret-key
 ```
 
 ---

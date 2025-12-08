@@ -5,9 +5,9 @@ spring:
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/ev_charging?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: root123456
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:ev_charging}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
 
   # JPA配置
   jpa:
@@ -22,9 +22,9 @@ spring:
   # Redis配置
   data:
     redis:
-      host: localhost
-      port: 6379
-      password:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       database: 0
       timeout: 3000ms
       lettuce:
@@ -42,21 +42,21 @@ spring:
 
 # 服务器配置
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api
 
 # JWT配置
 jwt:
-  secret: ev-charging-station-management-system-jwt-secret-key-2024
-  expiration: 86400000  # 24小时（毫秒）
+  secret: ${JWT_SECRET:please-change-this-secret-key-in-production}
+  expiration: ${JWT_EXPIRATION:86400000}  # 24小时（毫秒）
 
 # AI服务配置
 ai:
   service:
-    url: http://localhost:5000
-    connect-timeout: 5000  # 连接超时（毫秒）
-    read-timeout: 10000    # 读取超时（毫秒）
+    url: ${AI_SERVICE_URL:http://localhost:5000}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:5000}  # 连接超时（毫秒）
+    read-timeout: ${AI_READ_TIMEOUT:10000}    # 读取超时（毫秒）
 
 # 日志配置
 logging:
