@@ -12,6 +12,10 @@ import joblib
 import sys
 import os
 
+# 设置输出编码为UTF-8
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.data_generator import generate_fault_data
 
@@ -22,13 +26,13 @@ def train_fault_model():
 
     # 生成训练数据
     print('生成训练数据...')
-    data = generate_fault_data(n_samples=10000)
+    data = generate_fault_data(n_samples=5000)
     df = pd.DataFrame(data)
 
     # 特征和标签
     feature_columns = [
-        'total_charging_times', 'total_charging_energy', 'current_power',
-        'voltage', 'current', 'temperature', 'days_since_maintenance'
+        'total_charge_count', 'total_charge_amount', 'days_since_last_maintenance',
+        'health_score', 'avg_daily_usage', 'voltage_fluctuation', 'fault_history_count'
     ]
     X = df[feature_columns]
     y = df['is_fault']
@@ -65,9 +69,21 @@ def train_fault_model():
     print('\n混淆矩阵:')
     cm = confusion_matrix(y_test, y_pred)
     print(cm)
+    print(f'  预测正常  预测故障')
+    print(f'实际正常: {cm[0][0]:5d}    {cm[0][1]:5d}')
+    print(f'实际故障: {cm[1][0]:5d}    {cm[1][1]:5d}')
 
     roc_auc = roc_auc_score(y_test, y_pred_proba)
+    accuracy = (y_pred == y_test).mean()
     print(f'\nROC AUC Score: {roc_auc:.4f}')
+    print(f'准确率 (Accuracy): {accuracy:.2%}')
+
+    # 检查是否满足要求
+    if accuracy > 0.80:
+        print('✓ 模型满足性能要求 (准确率 > 80%)')
+    else:
+        print(f'✗ 模型未满足性能要求 (准确率 {accuracy:.2%} <= 80%)')
+
     print('='* 50)
 
     # 特征重要性
@@ -90,12 +106,13 @@ def train_fault_model():
     # 测试预测
     print('\n测试预测:')
     test_samples = [
-        [500, 25000, 55, 380, 145, 60, 45],  # 高风险样本
-        [100, 5000, 50, 380, 130, 35, 15]    # 低风险样本
+        [1500, 90000, 150, 45, 18, 35, 8],  # 高风险样本
+        [200, 10000, 30, 85, 5, 10, 1]      # 低风险样本
     ]
     for i, sample in enumerate(test_samples, 1):
         fault_proba = model.predict_proba([sample])[0][1]
-        print(f'\n样本 {i}: 故障概率 = {fault_proba:.2%}')
+        risk_level = "高风险" if fault_proba > 0.7 else ("中风险" if fault_proba > 0.4 else "低风险")
+        print(f'\n样本 {i}: 故障概率 = {fault_proba:.2%} ({risk_level})')
 
     return model
 

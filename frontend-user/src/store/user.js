@@ -10,6 +10,9 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = computed(() => !!token.value)
   const userId = computed(() => userInfo.value?.id)
   const username = computed(() => userInfo.value?.username)
+  const phone = computed(() => userInfo.value?.phone)
+  const balance = computed(() => userInfo.value?.balance)
+  const carbonCredits = computed(() => userInfo.value?.carbonCredits)
 
   // 设置 token
   function setToken(newToken) {
@@ -49,6 +52,9 @@ export const useUserStore = defineStore('user', () => {
     isLoggedIn,
     userId,
     username,
+    phone,
+    balance,
+    carbonCredits,
     setToken,
     setUserInfo,
     login,

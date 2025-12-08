@@ -4,7 +4,7 @@
  */
 
 // 高德地图 API Key（需要替换为实际的 Key）
-export const AMAP_KEY = 'your-amap-key-here'
+export const AMAP_KEY = '75872f381f507dedf5d08acf84ce40f1'
 
 /**
  * 初始化地图

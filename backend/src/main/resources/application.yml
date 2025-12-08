@@ -51,6 +51,13 @@ jwt:
   secret: ev-charging-station-management-system-jwt-secret-key-2024
   expiration: 86400000  # 24小时（毫秒）
 
+# AI服务配置
+ai:
+  service:
+    url: http://localhost:5000
+    connect-timeout: 5000  # 连接超时（毫秒）
+    read-timeout: 10000    # 读取超时（毫秒）
+
 # 日志配置
 logging:
   level:

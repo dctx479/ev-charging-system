@@ -106,11 +106,11 @@ public class ChargingPileController {
      * 更新充电桩状态（管理员功能）
      *
      * @param id     充电桩ID
-     * @param status 新状态
+     * @param status 新状态：1空闲 2充电中 3预约中 4故障 5离线
      * @return 更新结果
      */
     @PatchMapping("/{id}/status")
-    public Result<ChargingPile> updatePileStatus(@PathVariable Long id, @RequestParam String status) {
+    public Result<ChargingPile> updatePileStatus(@PathVariable Long id, @RequestParam Byte status) {
         ChargingPile updated = pileService.updatePileStatus(id, status);
         return Result.success("状态更新成功", updated);
     }

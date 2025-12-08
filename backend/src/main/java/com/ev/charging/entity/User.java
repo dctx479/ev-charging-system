@@ -71,6 +71,13 @@ public class User {
     private Double balance = 0.0;
 
     /**
+     * 碳积分余额
+     */
+    @Min(value = 0, message = "碳积分不能为负数")
+    @Column(nullable = false)
+    private Integer carbonCredits = 0;
+
+    /**
      * 账户状态：ACTIVE-正常，DISABLED-禁用
      */
     @Column(nullable = false, length = 20)

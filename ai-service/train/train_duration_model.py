@@ -12,6 +12,10 @@ import joblib
 import sys
 import os
 
+# 设置输出编码为UTF-8
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 # 添加父目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.data_generator import generate_duration_data
@@ -41,8 +45,10 @@ def train_duration_model():
     # 训练模型
     print('训练随机森林回归模型...')
     model = RandomForestRegressor(
-        n_estimators=100,
-        max_depth=10,
+        n_estimators=200,
+        max_depth=15,
+        min_samples_split=5,
+        min_samples_leaf=2,
         random_state=42,
         n_jobs=-1
     )
@@ -54,11 +60,26 @@ def train_duration_model():
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test, y_pred)
 
+    # 计算MAE（分钟）
+    mae_minutes = np.mean(np.abs((y_test - y_pred) * 60))
+
     print('='* 50)
     print('模型评估结果:')
     print(f'均方误差 (MSE): {mse:.4f}')
     print(f'均方根误差 (RMSE): {rmse:.4f}')
+    print(f'平均绝对误差 (MAE): {mae_minutes:.2f} 分钟')
     print(f'决定系数 (R²): {r2:.4f}')
+
+    # 检查是否满足要求
+    if mae_minutes < 5 and r2 > 0.85:
+        print('✓ 模型满足性能要求 (MAE < 5分钟, R² > 0.85)')
+    else:
+        print('✗ 模型未满足性能要求')
+        if mae_minutes >= 5:
+            print(f'  - MAE ({mae_minutes:.2f}分钟) >= 5分钟')
+        if r2 <= 0.85:
+            print(f'  - R² ({r2:.4f}) <= 0.85')
+
     print('='* 50)
 
     # 特征重要性

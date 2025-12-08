@@ -44,11 +44,11 @@ public class ChargingPileService {
     /**
      * 根据编号获取充电桩
      *
-     * @param pileCode 充电桩编号
+     * @param pileNo 充电桩编号
      * @return 充电桩信息
      */
-    public ChargingPile getPileByCode(String pileCode) {
-        return pileRepository.findByPileCode(pileCode)
+    public ChargingPile getPileByNo(String pileNo) {
+        return pileRepository.findByPileNo(pileNo)
                 .orElseThrow(() -> new IllegalArgumentException(ResultCode.PILE_NOT_FOUND.getMessage()));
     }
 
@@ -69,7 +69,7 @@ public class ChargingPileService {
      * @return 可用充电桩列表
      */
     public List<ChargingPile> getAvailablePiles(Long stationId) {
-        return pileRepository.findByStationIdAndStatus(stationId, "AVAILABLE");
+        return pileRepository.findByStationIdAndStatus(stationId, (byte) 1); // 1-空闲
     }
 
     /**
@@ -90,7 +90,7 @@ public class ChargingPileService {
     @Transactional
     public ChargingPile createPile(ChargingPile pile) {
         // 检查编号是否已存在
-        if (pileRepository.existsByPileCode(pile.getPileCode())) {
+        if (pileRepository.existsByPileNo(pile.getPileNo())) {
             throw new IllegalArgumentException("充电桩编号已存在");
         }
 
@@ -99,16 +99,16 @@ public class ChargingPileService {
 
         // 设置默认值
         if (pile.getStatus() == null) {
-            pile.setStatus("AVAILABLE");
+            pile.setStatus((byte) 1); // 1-空闲
         }
-        if (pile.getCurrentPower() == null) {
-            pile.setCurrentPower(0.0);
+        if (pile.getTotalChargeCount() == null) {
+            pile.setTotalChargeCount(0);
         }
-        if (pile.getTotalChargingTimes() == null) {
-            pile.setTotalChargingTimes(0);
+        if (pile.getTotalChargeAmount() == null) {
+            pile.setTotalChargeAmount(0.0);
         }
-        if (pile.getTotalChargingEnergy() == null) {
-            pile.setTotalChargingEnergy(0.0);
+        if (pile.getHealthScore() == null) {
+            pile.setHealthScore((byte) 100);
         }
 
         ChargingPile savedPile = pileRepository.save(pile);
@@ -131,10 +131,10 @@ public class ChargingPileService {
 
         // 保存原始值，用于后续比较
         Long oldStationId = existing.getStationId();
-        String oldStatus = existing.getStatus();
+        Byte oldStatus = existing.getStatus();
 
         // 更新字段
-        BeanUtils.copyProperties(pile, existing, "id", "pileCode", "createTime", "updateTime");
+        BeanUtils.copyProperties(pile, existing, "id", "pileNo", "createTime", "updateTime");
 
         ChargingPile savedPile = pileRepository.save(existing);
 
@@ -156,11 +156,11 @@ public class ChargingPileService {
      * 更新充电桩状态
      *
      * @param id     充电桩ID
-     * @param status 新状态
+     * @param status 新状态：1空闲 2充电中 3预约中 4故障 5离线
      * @return 更新后的充电桩
      */
     @Transactional
-    public ChargingPile updatePileStatus(Long id, String status) {
+    public ChargingPile updatePileStatus(Long id, Byte status) {
         ChargingPile pile = getPileById(id);
         pile.setStatus(status);
         ChargingPile savedPile = pileRepository.save(pile);
@@ -175,20 +175,15 @@ public class ChargingPileService {
      * 更新充电桩实时数据
      *
      * @param id          充电桩ID
-     * @param currentPower 当前功率
      * @param voltage     电压
      * @param current     电流
-     * @param temperature 温度
      * @return 更新后的充电桩
      */
     @Transactional
-    public ChargingPile updatePileRealTimeData(Long id, Double currentPower,
-                                                 Double voltage, Double current, Double temperature) {
+    public ChargingPile updatePileRealTimeData(Long id, Integer voltage, Double current) {
         ChargingPile pile = getPileById(id);
-        pile.setCurrentPower(currentPower);
         pile.setVoltage(voltage);
         pile.setCurrent(current);
-        pile.setTemperature(temperature);
 
         return pileRepository.save(pile);
     }
@@ -203,7 +198,8 @@ public class ChargingPileService {
     public ChargingPile recordMaintenance(Long id) {
         ChargingPile pile = getPileById(id);
         pile.setLastMaintenanceTime(LocalDateTime.now());
-        pile.setStatus("MAINTENANCE");
+        pile.setStatus((byte) 5); // 5-离线（维护中）
+        pile.setHealthScore((byte) 100); // 维护后重置健康度
 
         ChargingPile savedPile = pileRepository.save(pile);
 

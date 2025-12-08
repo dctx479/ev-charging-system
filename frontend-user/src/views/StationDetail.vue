@@ -55,15 +55,52 @@
         <van-cell title="充电站介绍" :label="station.description" />
       </van-cell-group>
 
+      <!-- 排队信息 -->
+      <van-cell-group v-if="queueInfo" inset title="排队信息">
+        <van-cell title="当前排队人数">
+          <template #value>
+            <span :style="{ color: queueInfo.queueCount > 5 ? '#ff6b6b' : '#07c160' }">
+              {{ queueInfo.queueCount }}人
+            </span>
+          </template>
+        </van-cell>
+        <van-cell
+          v-if="queueInfo.queueCount > 0"
+          title="预计等待时间"
+          :value="`约${queueInfo.averageWaitTime}分钟`"
+        />
+        <van-cell title="建议" :label="queueInfo.suggestion">
+          <template #icon>
+            <van-icon
+              :name="queueInfo.recommendQueue ? 'success' : 'warning-o'"
+              :color="queueInfo.recommendQueue ? '#07c160' : '#ff976a'"
+              size="18"
+              style="margin-right: 8px;"
+            />
+          </template>
+        </van-cell>
+      </van-cell-group>
+
       <!-- 操作按钮 -->
       <div class="action-buttons">
         <van-button
+          v-if="station.availablePiles > 0"
           type="primary"
           size="large"
           round
           @click="goToPileList"
         >
           查看充电桩
+        </van-button>
+        <van-button
+          v-else
+          type="warning"
+          size="large"
+          round
+          :loading="joiningQueue"
+          @click="handleJoinQueue"
+        >
+          加入排队
         </van-button>
       </div>
     </div>
@@ -75,13 +112,17 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { showToast } from 'vant'
 import { getStationDetail } from '@/api/station'
+import { getStationQueueInfo, joinQueue } from '@/api/queue'
 
 const router = useRouter()
 const route = useRoute()
 
 const station = ref(null)
 const loading = ref(true)
+const queueInfo = ref(null)
+const joiningQueue = ref(false)
 
 const onClickLeft = () => {
   router.back()
@@ -91,15 +132,43 @@ const goToPileList = () => {
   router.push(`/piles/${station.value.id}`)
 }
 
+const handleJoinQueue = async () => {
+  joiningQueue.value = true
+  try {
+    await joinQueue({ stationId: station.value.id })
+    showToast('加入排队成功')
+    // 跳转到排队状态页面
+    setTimeout(() => {
+      router.push('/queue/status')
+    }, 1000)
+  } catch (error) {
+    const message = error.response?.data?.message || '加入排队失败'
+    showToast(message)
+  } finally {
+    joiningQueue.value = false
+  }
+}
+
 const loadStationDetail = async () => {
   loading.value = true
   try {
     const res = await getStationDetail(route.params.id)
     station.value = res.data
+    // 加载排队信息
+    await loadQueueInfo()
   } catch (error) {
     console.error('加载失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const loadQueueInfo = async () => {
+  try {
+    const res = await getStationQueueInfo(route.params.id)
+    queueInfo.value = res.data
+  } catch (error) {
+    console.error('加载排队信息失败:', error)
   }
 }
 

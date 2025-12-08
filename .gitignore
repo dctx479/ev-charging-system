@@ -71,8 +71,32 @@ tmp/
 temp/
 *.tmp
 *.bak
+nul
 
-# Claude AI
+# Test files
+**/test_*.py
+**/*_test.py
+
+# Backup files
+*.backup
+*.old
+
+# Cache directories
+.cache/
+**/.vite/
+**/node_modules/.cache/
+
+# Claude Code 相关文件
+.claude/
 CLAUDE.md
 CODE_REVIEW_FIXES.md
-.claude/
+.claude-*
+.claude-session*
+.claude-history*
+
+# 任务文档
+第一部分_基础架构与用户端.md
+第二部分_运营商后台与AI预测.md
+第三部分_订单系统与创新服务.md
+第四部分_能源管理与社交功能.md
+
