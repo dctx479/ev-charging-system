@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @Entity
-@Table(name = "charging_stations")
+@Table(name = "charging_station")
 public class ChargingStation {
 
     @Id
@@ -68,10 +68,10 @@ public class ChargingStation {
     private Integer availablePiles = 0;
 
     /**
-     * 充电站状态：ACTIVE-营业中，MAINTENANCE-维护中，CLOSED-已关闭
+     * 充电站状态：1-营业中，2-维护中，0-关闭
      */
-    @Column(nullable = false, length = 20)
-    private String status = "ACTIVE";
+    @Column(nullable = false)
+    private Byte status = 1;
 
     /**
      * 充电站图片URL

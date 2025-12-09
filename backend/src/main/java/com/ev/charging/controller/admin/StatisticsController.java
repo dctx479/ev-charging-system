@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 统计数据控制器
@@ -59,5 +60,28 @@ public class StatisticsController {
         log.info("查询站点排行: limit={}", limit);
         List<StationRankingVO> ranking = statisticsService.getStationRanking(limit);
         return Result.success(ranking);
+    }
+
+    /**
+     * 获取订单统计
+     */
+    @GetMapping("/orders")
+    public Result<Map<String, Object>> getOrderStatistics(
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        log.info("查询订单统计: startDate={}, endDate={}", startDate, endDate);
+        Map<String, Object> stats = statisticsService.getOrderStatistics(startDate, endDate);
+        return Result.success(stats);
+    }
+
+    /**
+     * 获取收入统计
+     */
+    @GetMapping("/revenue")
+    public Result<Map<String, Object>> getRevenueStatistics(
+            @RequestParam(defaultValue = "day") String period) {
+        log.info("查询收入统计: period={}", period);
+        Map<String, Object> stats = statisticsService.getRevenueStatistics(period);
+        return Result.success(stats);
     }
 }

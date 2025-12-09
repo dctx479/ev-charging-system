@@ -467,7 +467,7 @@ INSERT INTO `user` (`phone`, `nickname`, `avatar`, `real_name`, `car_plate`, `ca
 ('13800138003', '王五', NULL, '王五', '京C11111', '蔚来ET7', 100.00, 2100, 200.00, 1)
 ON DUPLICATE KEY UPDATE update_time = NOW();
 
--- 5.3 插入测试充电站（多城市多站点）
+-- 5.4 插入测试充电站（多城市多站点）
 INSERT INTO `charging_station`
 (`operator_id`, `name`, `province`, `city`, `district`, `address`, `longitude`, `latitude`, `total_piles`, `available_piles`, `parking_fee`, `business_hours`, `has_solar`, `has_storage`, `solar_capacity`, `storage_capacity`, `status`)
 VALUES

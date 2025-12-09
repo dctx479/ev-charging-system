@@ -36,7 +36,7 @@ public class QueueController {
 
         try {
             Long queueId = queueService.joinQueue(userId, dto);
-            return Result.success(queueId, "加入排队成功");
+            return Result.success("加入排队成功", queueId);
         } catch (IllegalArgumentException e) {
             log.warn("加入排队失败: {}", e.getMessage());
             return Result.error(400, e.getMessage());
@@ -82,7 +82,7 @@ public class QueueController {
 
         try {
             queueService.leaveQueue(userId);
-            return Result.success(null, "已离开队列");
+            return Result.success("已离开队列", null);
         } catch (IllegalArgumentException e) {
             log.warn("离开队列失败: {}", e.getMessage());
             return Result.error(400, e.getMessage());

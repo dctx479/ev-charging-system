@@ -76,7 +76,7 @@ public class QueueService {
         }
 
         // 3. 检查是否有空闲充电桩
-        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, "AVAILABLE");
+        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, (byte) 1);
         if (availablePiles > 0) {
             throw new IllegalArgumentException("当前有空闲充电桩，无需排队，请直接开始充电");
         }
@@ -172,7 +172,7 @@ public class QueueService {
         long queueCount = queueRecordRepository.countByStationIdAndStatus(stationId, STATUS_QUEUING);
 
         // 查询可用充电桩数量
-        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, "AVAILABLE");
+        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, (byte) 1);
 
         // 计算平均等待时间
         int averageWaitTime = 0;
@@ -284,7 +284,7 @@ public class QueueService {
      */
     private int calculateEstimatedWaitTime(Long stationId, int queuePosition) {
         // 查询可用充电桩数量
-        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, "AVAILABLE");
+        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, (byte) 1);
 
         if (availablePiles == 0) {
             availablePiles = 1; // 避免除零

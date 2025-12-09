@@ -19,7 +19,7 @@ public interface ChargingStationRepository extends JpaRepository<ChargingStation
      * @param status 状态
      * @return 充电站列表
      */
-    List<ChargingStation> findByStatus(String status);
+    List<ChargingStation> findByStatus(Byte status);
 
     /**
      * 根据名称模糊查询充电站
@@ -34,7 +34,7 @@ public interface ChargingStationRepository extends JpaRepository<ChargingStation
      *
      * @return 充电站列表
      */
-    @Query("SELECT s FROM ChargingStation s WHERE s.status = 'ACTIVE' ORDER BY s.rating DESC")
+    @Query("SELECT s FROM ChargingStation s WHERE s.status = 1 ORDER BY s.rating DESC")
     List<ChargingStation> findActiveStationsOrderByRating();
 
     /**
@@ -48,6 +48,6 @@ public interface ChargingStationRepository extends JpaRepository<ChargingStation
      * @return 充电站列表
      */
     @Query("SELECT s FROM ChargingStation s WHERE s.latitude BETWEEN :minLat AND :maxLat " +
-            "AND s.longitude BETWEEN :minLon AND :maxLon AND s.status = 'ACTIVE'")
+            "AND s.longitude BETWEEN :minLon AND :maxLon AND s.status = 1")
     List<ChargingStation> findNearbyStations(Double minLat, Double maxLat, Double minLon, Double maxLon);
 }

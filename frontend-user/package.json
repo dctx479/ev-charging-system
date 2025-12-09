@@ -9,11 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.2.5",
-    "pinia": "^2.1.7",
     "axios": "^1.6.2",
-    "vant": "^4.8.0"
+    "dayjs": "^1.11.19",
+    "pinia": "^2.1.7",
+    "vant": "^4.8.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

@@ -30,7 +30,7 @@ export function getChargeTrend(days = 7) {
  */
 export function getPileStatusDistribution() {
   return request({
-    url: '/admin/statistics/pile-status-distribution',
+    url: '/admin/statistics/pile-status',
     method: 'get'
   })
 }

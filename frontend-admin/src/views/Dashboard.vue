@@ -25,7 +25,7 @@
               <Money />
             </el-icon>
             <div class="stat-info">
-              <div class="stat-value">¥{{ dashboardStats.todayRevenue || 0 }}</div>
+              <div class="stat-value">¥{{ dashboardStats.todayIncome || 0 }}</div>
               <div class="stat-label">今日收入 (元)</div>
             </div>
           </div>
@@ -136,7 +136,7 @@ import WebSocketClient from '@/utils/websocket'
 // 数据定义
 const dashboardStats = ref({
   todayChargeAmount: 0,
-  todayRevenue: 0,
+  todayIncome: 0,
   onlinePileCount: 0,
   faultPileCount: 0
 })
@@ -164,7 +164,7 @@ const fetchDashboardStats = async () => {
     const res = await getDashboardStats()
     dashboardStats.value = res.data || {
       todayChargeAmount: 0,
-      todayRevenue: 0,
+      todayIncome: 0,
       onlinePileCount: 0,
       faultPileCount: 0
     }
@@ -188,7 +188,15 @@ const fetchChargeTrend = async () => {
 const fetchPileStatusDistribution = async () => {
   try {
     const res = await getPileStatusDistribution()
-    pileStatusData.value = res.data || []
+    // 转换为 ECharts 饼图需要的格式
+    const data = res.data || {}
+    pileStatusData.value = [
+      { name: '空闲', value: data.availableCount || 0 },
+      { name: '充电中', value: data.chargingCount || 0 },
+      { name: '预约中', value: data.reservedCount || 0 },
+      { name: '故障', value: data.faultCount || 0 },
+      { name: '离线', value: data.offlineCount || 0 }
+    ].filter(item => item.value > 0)  // 过滤掉值为0的项
     initPieChart()
   } catch (error) {
     console.error('获取状态分布失败:', error)
@@ -199,7 +207,14 @@ const fetchPileStatusDistribution = async () => {
 const fetchStationRanking = async () => {
   try {
     const res = await getStationRanking(5)
-    stationRanking.value = res.data || []
+    // 转换字段名以匹配前端模板
+    stationRanking.value = (res.data || []).map(item => ({
+      stationId: item.stationId,
+      stationName: item.stationName,
+      revenue: item.totalIncome || 0,
+      chargeAmount: item.totalChargeAmount || 0,
+      orderCount: item.totalOrderCount || 0
+    }))
   } catch (error) {
     console.error('获取站点排行失败:', error)
   }

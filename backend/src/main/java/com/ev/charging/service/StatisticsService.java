@@ -222,4 +222,117 @@ public class StatisticsService {
             return Collections.emptyList();
         }
     }
+
+    /**
+     * 获取订单统计（按日期范围）
+     */
+    public Map<String, Object> getOrderStatistics(String startDate, String endDate) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            String sql = "SELECT " +
+                    "COUNT(*) as totalCount, " +
+                    "SUM(CASE WHEN order_status = 3 THEN 1 ELSE 0 END) as completedCount, " +
+                    "SUM(CASE WHEN order_status IN (1, 2) THEN 1 ELSE 0 END) as inProgressCount, " +
+                    "SUM(CASE WHEN order_status = 4 THEN 1 ELSE 0 END) as cancelledCount, " +
+                    "COALESCE(SUM(charge_amount), 0) as totalChargeAmount, " +
+                    "COALESCE(SUM(total_fee), 0) as totalRevenue " +
+                    "FROM charge_order " +
+                    "WHERE DATE(create_time) >= ? AND DATE(create_time) <= ?";
+
+            Map<String, Object> stats = jdbcTemplate.queryForMap(sql, startDate, endDate);
+
+            result.put("totalCount", ((Number) stats.get("totalCount")).intValue());
+            result.put("completedCount", ((Number) stats.get("completedCount")).intValue());
+            result.put("inProgressCount", ((Number) stats.get("inProgressCount")).intValue());
+            result.put("cancelledCount", ((Number) stats.get("cancelledCount")).intValue());
+            result.put("totalChargeAmount", new BigDecimal(stats.get("totalChargeAmount").toString()));
+            result.put("totalRevenue", new BigDecimal(stats.get("totalRevenue").toString()));
+        } catch (Exception e) {
+            log.error("查询订单统计失败", e);
+            result.put("totalCount", 0);
+            result.put("completedCount", 0);
+            result.put("inProgressCount", 0);
+            result.put("cancelledCount", 0);
+            result.put("totalChargeAmount", BigDecimal.ZERO);
+            result.put("totalRevenue", BigDecimal.ZERO);
+        }
+
+        return result;
+    }
+
+    /**
+     * 获取收入统计（按周期）
+     */
+    public Map<String, Object> getRevenueStatistics(String period) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> dates = new ArrayList<>();
+        List<BigDecimal> revenues = new ArrayList<>();
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate today = LocalDate.now();
+
+        int days;
+        String dateFormat;
+        String groupBy;
+
+        switch (period) {
+            case "week":
+                days = 7;
+                dateFormat = "%Y-%m-%d";
+                groupBy = "DATE(create_time)";
+                break;
+            case "month":
+                days = 30;
+                dateFormat = "%Y-%m-%d";
+                groupBy = "DATE(create_time)";
+                break;
+            default: // day
+                days = 7;
+                dateFormat = "%Y-%m-%d";
+                groupBy = "DATE(create_time)";
+                break;
+        }
+
+        try {
+            String sql = "SELECT DATE_FORMAT(create_time, ?) as dateKey, " +
+                    "COALESCE(SUM(total_fee), 0) as revenue " +
+                    "FROM charge_order " +
+                    "WHERE create_time >= DATE_SUB(NOW(), INTERVAL ? DAY) " +
+                    "AND order_status != 4 " +
+                    "GROUP BY dateKey " +
+                    "ORDER BY dateKey";
+
+            List<Map<String, Object>> queryResults = jdbcTemplate.queryForList(sql, dateFormat, days);
+
+            // 构建日期到收入的映射
+            Map<String, BigDecimal> revenueMap = new HashMap<>();
+            for (Map<String, Object> row : queryResults) {
+                String dateKey = (String) row.get("dateKey");
+                BigDecimal revenue = new BigDecimal(row.get("revenue").toString());
+                revenueMap.put(dateKey, revenue);
+            }
+
+            // 生成完整日期列表
+            for (int i = days - 1; i >= 0; i--) {
+                LocalDate date = today.minusDays(i);
+                String dateKey = date.format(formatter);
+                dates.add(dateKey);
+                revenues.add(revenueMap.getOrDefault(dateKey, BigDecimal.ZERO));
+            }
+
+        } catch (Exception e) {
+            log.error("查询收入统计失败", e);
+            // 返回空数据
+            for (int i = days - 1; i >= 0; i--) {
+                LocalDate date = today.minusDays(i);
+                dates.add(date.format(formatter));
+                revenues.add(BigDecimal.ZERO);
+            }
+        }
+
+        result.put("dates", dates);
+        result.put("revenues", revenues);
+        return result;
+    }
 }

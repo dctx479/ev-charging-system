@@ -78,7 +78,7 @@ public class ChargingStationService {
     public List<StationVO> searchStations(String keyword) {
         List<ChargingStation> stations = stationRepository.findByNameContaining(keyword);
         return stations.stream()
-                .filter(s -> "ACTIVE".equals(s.getStatus()))
+                .filter(s -> s.getStatus() != null && s.getStatus() == 1)
                 .map(this::convertToVO)
                 .collect(Collectors.toList());
     }
@@ -137,7 +137,7 @@ public class ChargingStationService {
     public ChargingStation createStation(ChargingStation station) {
         // 初始化默认值
         if (station.getStatus() == null) {
-            station.setStatus("ACTIVE");
+            station.setStatus((byte) 1);
         }
         if (station.getTotalPiles() == null) {
             station.setTotalPiles(0);
@@ -181,7 +181,7 @@ public class ChargingStationService {
         ChargingStation station = getStationById(stationId);
 
         long totalPiles = pileRepository.countByStationId(stationId);
-        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, "AVAILABLE");
+        long availablePiles = pileRepository.countByStationIdAndStatus(stationId, (byte) 1);
 
         station.setTotalPiles((int) totalPiles);
         station.setAvailablePiles((int) availablePiles);
@@ -207,7 +207,26 @@ public class ChargingStationService {
      */
     private StationVO convertToVO(ChargingStation station) {
         StationVO vo = new StationVO();
-        BeanUtils.copyProperties(station, vo);
+        BeanUtils.copyProperties(station, vo, "status");
+
+        // 转换状态：Byte -> String
+        if (station.getStatus() != null) {
+            switch (station.getStatus()) {
+                case 1:
+                    vo.setStatus("ACTIVE");
+                    break;
+                case 2:
+                    vo.setStatus("MAINTENANCE");
+                    break;
+                case 0:
+                default:
+                    vo.setStatus("CLOSED");
+                    break;
+            }
+        } else {
+            vo.setStatus("CLOSED");
+        }
+
         return vo;
     }
 }

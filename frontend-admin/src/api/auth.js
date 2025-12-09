@@ -5,7 +5,7 @@ import request from '@/utils/request'
  */
 export function login(data) {
   return request({
-    url: '/admin/login',
+    url: '/auth/login',
     method: 'post',
     data
   })
@@ -16,7 +16,7 @@ export function login(data) {
  */
 export function getAdminInfo() {
   return request({
-    url: '/admin/info',
+    url: '/auth/user/info',
     method: 'get'
   })
 }
@@ -26,7 +26,7 @@ export function getAdminInfo() {
  */
 export function logout() {
   return request({
-    url: '/admin/logout',
+    url: '/auth/logout',
     method: 'post'
   })
 }

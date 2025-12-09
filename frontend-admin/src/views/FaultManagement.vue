@@ -360,8 +360,8 @@ const fetchFaultList = async () => {
   loading.value = true
   try {
     const res = await getFaultList(queryParams.value)
-    faultList.value = res.data.records || []
-    total.value = res.data.total || 0
+    faultList.value = res.data.content || []
+    total.value = res.data.totalElements || 0
   } catch (error) {
     ElMessage.error('获取故障列表失败')
   } finally {
