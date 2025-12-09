@@ -4,7 +4,10 @@ import { showToast } from 'vant'
 // 创建 axios 实例
 const request = axios.create({
   baseURL: '/api',
-  timeout: 10000
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json;charset=UTF-8'
+  }
 })
 
 // 请求拦截器
@@ -14,6 +17,10 @@ request.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
+    }
+    // 确保请求头包含正确的 Content-Type
+    if (!config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json;charset=UTF-8'
     }
     return config
   },

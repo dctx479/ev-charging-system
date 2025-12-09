@@ -26,7 +26,9 @@ import {
   Empty,
   Divider,
   Image as VanImage,
-  Lazyload
+  Lazyload,
+  ActionSheet,
+  Rate
 } from 'vant'
 
 // Vant 样式
@@ -58,6 +60,8 @@ app.use(Empty)
 app.use(Divider)
 app.use(VanImage)
 app.use(Lazyload)
+app.use(ActionSheet)
+app.use(Rate)
 
 app.use(pinia)
 app.use(router)

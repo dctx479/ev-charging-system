@@ -49,6 +49,7 @@ public class WebConfig implements WebMvcConfigurer {
                 // 排除登录注册接口
                 .excludePathPatterns(
                         "/auth/**",           // 认证相关接口
+                        "/stations/**",       // 临时：允许访问充电站接口进行测试
                         "/error",             // 错误页面
                         "/favicon.ico"        // 浏览器图标
                 );
@@ -61,11 +62,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
         // 配置字符串转换器使用UTF-8
         StringHttpMessageConverter stringConverter = new StringHttpMessageConverter(StandardCharsets.UTF_8);
-        stringConverter.setSupportedMediaTypes(Arrays.asList(
-                MediaType.TEXT_PLAIN,
-                MediaType.TEXT_HTML,
-                MediaType.APPLICATION_JSON
-        ));
+        stringConverter.setWriteAcceptCharset(false);
         converters.add(0, stringConverter);
 
         // 配置JSON转换器使用UTF-8
@@ -75,6 +72,11 @@ public class WebConfig implements WebMvcConfigurer {
                 new MediaType("application", "json", StandardCharsets.UTF_8),
                 new MediaType("application", "*+json", StandardCharsets.UTF_8)
         ));
+
+        // 关键：禁用Accept-Charset响应头，确保始终使用UTF-8
+        ObjectMapper objectMapper = jsonConverter.getObjectMapper();
+        jsonConverter.setObjectMapper(objectMapper);
+
         converters.add(jsonConverter);
     }
 }
