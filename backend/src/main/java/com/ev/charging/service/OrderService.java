@@ -45,6 +45,9 @@ public class OrderService {
     @Autowired
     private PaymentRepository paymentRepository;
 
+    @Autowired
+    private CarbonCreditService carbonCreditService;
+
     /**
      * 创建订单（开始充电）
      */
@@ -285,6 +288,19 @@ public class OrderService {
         order.setPaymentMethod(paymentMethod);
         order.setPaymentTime(LocalDateTime.now());
         orderRepository.save(order);
+
+        // 7. 支付成功后发放碳积分
+        try {
+            Integer credits = carbonCreditService.addCreditsForCharging(
+                    orderId,
+                    userId,
+                    order.getChargeAmount()
+            );
+            log.info("订单支付成功，发放碳积分: orderId={}, credits={}", orderId, credits);
+        } catch (Exception e) {
+            log.error("发放碳积分失败: orderId={}", orderId, e);
+            // 碳积分发放失败不影响支付成功，只记录日志
+        }
 
         log.info("支付订单成功: orderId={}, paymentNo={}, amount={}", orderId, paymentNo, order.getTotalFee());
     }

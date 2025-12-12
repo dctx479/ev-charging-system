@@ -65,7 +65,7 @@ public class ChargeOrder {
     /**
      * 充电时长（分钟）
      */
-    @Column(name = "charge_duration")
+    @Column(name = "actual_duration")
     private Integer chargeDuration;
 
     /**
