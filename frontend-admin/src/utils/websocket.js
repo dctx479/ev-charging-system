@@ -21,13 +21,17 @@ class WebSocketClient {
   connect() {
     // 如果已手动关闭，不再重连
     if (this.manuallyClosed) {
-      console.log('WebSocket 已手动关闭，不再重连')
+      if (import.meta.env.DEV) {
+        console.log('WebSocket 已手动关闭，不再重连')
+      }
       return
     }
 
     // 如果重连次数超过限制，停止重连
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`WebSocket 重连失败次数已达上限（${this.maxReconnectAttempts}次），停止重连`)
+      if (import.meta.env.DEV) {
+        console.error(`WebSocket 重连失败次数已达上限（${this.maxReconnectAttempts}次），停止重连`)
+      }
       return
     }
 
@@ -35,7 +39,9 @@ class WebSocketClient {
       this.ws = new WebSocket(this.url)
 
       this.ws.onopen = () => {
-        console.log('WebSocket 连接成功')
+        if (import.meta.env.DEV) {
+          console.log('WebSocket 连接成功')
+        }
         // 重置重连计数
         this.reconnectAttempts = 0
 
@@ -51,16 +57,22 @@ class WebSocketClient {
           const data = JSON.parse(event.data)
           this.messageHandlers.forEach(handler => handler(data))
         } catch (error) {
-          console.error('WebSocket 消息解析失败:', error)
+          if (import.meta.env.DEV) {
+            console.error('WebSocket 消息解析失败:', error)
+          }
         }
       }
 
       this.ws.onerror = (error) => {
-        console.error('WebSocket 错误:', error)
+        if (import.meta.env.DEV) {
+          console.error('WebSocket 错误:', error)
+        }
       }
 
       this.ws.onclose = () => {
-        console.log('WebSocket 连接关闭')
+        if (import.meta.env.DEV) {
+          console.log('WebSocket 连接关闭')
+        }
 
         // 只有非手动关闭时才尝试重连
         if (!this.manuallyClosed) {
@@ -68,7 +80,9 @@ class WebSocketClient {
         }
       }
     } catch (error) {
-      console.error('WebSocket 连接失败:', error)
+      if (import.meta.env.DEV) {
+        console.error('WebSocket 连接失败:', error)
+      }
 
       // 只有非手动关闭时才尝试重连
       if (!this.manuallyClosed) {
@@ -86,7 +100,9 @@ class WebSocketClient {
 
     // 如果重连次数超过限制，停止重连
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`WebSocket 重连失败次数已达上限（${this.maxReconnectAttempts}次），停止重连`)
+      if (import.meta.env.DEV) {
+        console.error(`WebSocket 重连失败次数已达上限（${this.maxReconnectAttempts}次），停止重连`)
+      }
       return
     }
 
@@ -99,7 +115,9 @@ class WebSocketClient {
       30000
     )
 
-    console.log(`WebSocket 第 ${this.reconnectAttempts} 次重连，延迟 ${delay}ms`)
+    if (import.meta.env.DEV) {
+      console.log(`WebSocket 第 ${this.reconnectAttempts} 次重连，延迟 ${delay}ms`)
+    }
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
@@ -111,7 +129,9 @@ class WebSocketClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
     } else {
-      console.warn('WebSocket 未连接，无法发送消息')
+      if (import.meta.env.DEV) {
+        console.warn('WebSocket 未连接，无法发送消息')
+      }
     }
   }
 
@@ -154,7 +174,9 @@ class WebSocketClient {
     // 清空消息处理器
     this.messageHandlers = []
 
-    console.log('WebSocket 已关闭并清理资源')
+    if (import.meta.env.DEV) {
+      console.log('WebSocket 已关闭并清理资源')
+    }
   }
 
   /**

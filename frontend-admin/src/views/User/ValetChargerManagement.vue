@@ -36,7 +36,7 @@
       <el-table
         v-loading="loading"
         :data="tableData"
-        style="width: 100%"
+        class="full-width-table"
         border
       >
         <el-table-column prop="id" label="ID" width="80" />
@@ -111,7 +111,7 @@
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
         @current-change="handlePageChange"
-        style="margin-top: 20px; justify-content: flex-end"
+        class="pagination-container"
       />
     </el-card>
 
@@ -443,5 +443,15 @@ onMounted(() => {
 
 .query-form {
   margin-bottom: 20px;
+}
+
+.full-width-table {
+  width: 100%;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

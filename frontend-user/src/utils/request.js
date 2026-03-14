@@ -82,7 +82,9 @@ request.interceptors.request.use(
     return config
   },
   error => {
-    console.error('请求错误:', error)
+    if (import.meta.env.DEV) {
+      console.error('请求错误:', error)
+    }
     return Promise.reject(error)
   }
 )
@@ -118,7 +120,9 @@ request.interceptors.response.use(
       removePendingRequest(error.config)
     }
 
-    console.error('响应错误:', error)
+    if (import.meta.env.DEV) {
+      console.error('响应错误:', error)
+    }
 
     let message = '网络错误'
     if (error.response) {

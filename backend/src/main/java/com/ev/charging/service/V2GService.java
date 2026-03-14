@@ -170,8 +170,13 @@ public class V2GService {
         // 放电量 = 充电桩放电功率 × 放电时长（小时）
         ChargingPile pile = pileRepository.findById(record.getPileId())
             .orElseThrow(() -> new BusinessException("充电桩不存在"));
+        // 默认放电功率 7kW（家用交流桩标准功率），用于 pile.power 为 null 时的回退计算
         BigDecimal pilePower = pile.getPower() != null ? pile.getPower() : BigDecimal.valueOf(7);
         long durationMinutes = java.time.Duration.between(record.getStartTime(), endTime).toMinutes();
+        if (durationMinutes < 0) {
+            log.error("放电时长为负数: recordId={}, startTime={}, endTime={}", record.getId(), record.getStartTime(), endTime);
+            throw new BusinessException("放电时长计算异常，请联系管理员");
+        }
         BigDecimal serverEnergyAmount = pilePower
             .multiply(BigDecimal.valueOf(durationMinutes))
             .divide(BigDecimal.valueOf(60), 3, RoundingMode.HALF_UP);
@@ -221,9 +226,7 @@ public class V2GService {
      */
     public List<V2GRecordVO> getRecords(Long userId) {
         List<V2GRecord> records = v2gRecordRepository.findByUserIdOrderByCreateTimeDesc(userId);
-        return records.stream()
-            .map(this::convertToVO)
-            .collect(Collectors.toList());
+        return convertToVOBatch(records);
     }
 
     /**
@@ -231,9 +234,7 @@ public class V2GService {
      */
     public List<V2GRecordVO> getAllRecords() {
         List<V2GRecord> records = v2gRecordRepository.findAllByOrderByCreateTimeDesc();
-        return records.stream()
-            .map(this::convertToVO)
-            .collect(Collectors.toList());
+        return convertToVOBatch(records);
     }
 
     /**
@@ -274,19 +275,55 @@ public class V2GService {
     private V2GRecordVO convertToVO(V2GRecord record) {
         V2GRecordVO vo = new V2GRecordVO();
         BeanUtils.copyProperties(record, vo);
-        // 填充关联名称
-        if (record.getUserId() != null) {
-            userRepository.findById(record.getUserId())
-                .ifPresent(u -> vo.setUserName(u.getNickname() != null ? u.getNickname() : u.getUsername()));
-        }
-        if (record.getPileId() != null) {
-            pileRepository.findById(record.getPileId())
-                .ifPresent(p -> vo.setPileNo(p.getPileNo()));
-        }
-        if (record.getStationId() != null) {
-            stationRepository.findById(record.getStationId())
-                .ifPresent(s -> vo.setStationName(s.getName()));
-        }
         return vo;
+    }
+
+    /**
+     * 批量转换为VO（优化N+1查询）
+     * 一次性批量加载所有关联的用户、充电桩、站点数据
+     */
+    private List<V2GRecordVO> convertToVOBatch(List<V2GRecord> records) {
+        if (records.isEmpty()) {
+            return List.of();
+        }
+
+        // 收集所有关联ID
+        java.util.Set<Long> userIds = records.stream()
+            .map(V2GRecord::getUserId).filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+        java.util.Set<Long> pileIds = records.stream()
+            .map(V2GRecord::getPileId).filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+        java.util.Set<Long> stationIds = records.stream()
+            .map(V2GRecord::getStationId).filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        // 批量查询（各1次SQL，而非N次）
+        java.util.Map<Long, User> userMap = userRepository.findAllById(userIds).stream()
+            .collect(Collectors.toMap(User::getId, u -> u));
+        java.util.Map<Long, ChargingPile> pileMap = pileRepository.findAllById(pileIds).stream()
+            .collect(Collectors.toMap(ChargingPile::getId, p -> p));
+        java.util.Map<Long, com.ev.charging.entity.ChargingStation> stationMap =
+            stationRepository.findAllById(stationIds).stream()
+                .collect(Collectors.toMap(com.ev.charging.entity.ChargingStation::getId, s -> s));
+
+        // 组装VO
+        return records.stream().map(record -> {
+            V2GRecordVO vo = new V2GRecordVO();
+            BeanUtils.copyProperties(record, vo);
+            User user = userMap.get(record.getUserId());
+            if (user != null) {
+                vo.setUserName(user.getNickname() != null ? user.getNickname() : user.getUsername());
+            }
+            ChargingPile pile = pileMap.get(record.getPileId());
+            if (pile != null) {
+                vo.setPileNo(pile.getPileNo());
+            }
+            com.ev.charging.entity.ChargingStation station = stationMap.get(record.getStationId());
+            if (station != null) {
+                vo.setStationName(station.getName());
+            }
+            return vo;
+        }).collect(Collectors.toList());
     }
 }

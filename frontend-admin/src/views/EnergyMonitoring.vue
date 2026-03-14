@@ -172,7 +172,10 @@ const fetchStatistics = async () => {
       statistics.value = res.data || {}
     }
   } catch (error) {
-    console.error('获取统计数据失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取统计数据失败:', error)
+    }
+    ElMessage.error('获取统计数据失败，请重试')
   }
 }
 
@@ -413,9 +416,16 @@ const handleResize = () => {
 
   // 防抖处理
   resizeTimeout = setTimeout(() => {
-    if (flowChart && !flowChart.isDisposed()) flowChart.resize()
-    if (productionChart && !productionChart.isDisposed()) productionChart.resize()
-    if (consumptionChart && !consumptionChart.isDisposed()) consumptionChart.resize()
+    resizeTimeout = null
+    if (flowChart && !flowChart.isDisposed()) {
+      flowChart.resize()
+    }
+    if (productionChart && !productionChart.isDisposed()) {
+      productionChart.resize()
+    }
+    if (consumptionChart && !consumptionChart.isDisposed()) {
+      consumptionChart.resize()
+    }
   }, 300)
 }
 

@@ -1,10 +1,13 @@
 package com.ev.charging.mq.producer;
 
 import com.ev.charging.config.RabbitMQConfig;
-import com.ev.charging.mq.event.*;
+import com.ev.charging.mq.event.CreditChangeEvent;
+import com.ev.charging.mq.event.NotificationMessage;
+import com.ev.charging.mq.event.OrderCompletedEvent;
+import com.ev.charging.mq.event.OrderPaidEvent;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,10 +26,10 @@ import java.util.UUID;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class MessageProducer {
 
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * 发送订单完成消息

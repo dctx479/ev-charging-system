@@ -14,7 +14,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -67,16 +72,11 @@ public class OperationLogController {
         log.info("查询操作日志: userId={}, username={}, module={}, operationType={}, status={}, ip={}, startTime={}, endTime={}, page={}, size={}",
                 userId, username, module, operationType, status, ip, startTime, endTime, page, size);
 
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
-            Page<com.ev.charging.entity.OperationLog> logs = operationLogService.queryLogs(
-                    userId, username, module, operationType, status, ip, startTime, endTime, pageable
-            );
-            return Result.success(logs);
-        } catch (Exception e) {
-            log.error("查询操作日志失败", e);
-            return Result.error("查询操作日志失败，请稍后重试");
-        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
+        Page<com.ev.charging.entity.OperationLog> logs = operationLogService.queryLogs(
+                userId, username, module, operationType, status, ip, startTime, endTime, pageable
+        );
+        return Result.success(logs);
     }
 
     /**
@@ -90,13 +90,8 @@ public class OperationLogController {
     public Result<com.ev.charging.entity.OperationLog> getLogById(@PathVariable Long id) {
         log.info("查询操作日志详情: id={}", id);
 
-        try {
-            com.ev.charging.entity.OperationLog log = operationLogService.getLogById(id);
-            return Result.success(log);
-        } catch (Exception e) {
-            log.error("查询操作日志详情失败", e);
-            return Result.error("查询操作日志详情失败，请稍后重试");
-        }
+        com.ev.charging.entity.OperationLog logEntity = operationLogService.getLogById(id);
+        return Result.success(logEntity);
     }
 
     /**
@@ -109,13 +104,8 @@ public class OperationLogController {
     public Result<Map<String, Object>> getLogStatistics() {
         log.info("获取操作日志统计信息");
 
-        try {
-            Map<String, Object> statistics = operationLogService.getLogStatistics();
-            return Result.success(statistics);
-        } catch (Exception e) {
-            log.error("获取操作日志统计信息失败", e);
-            return Result.error("获取操作日志统计信息失败，请稍后重试");
-        }
+        Map<String, Object> statistics = operationLogService.getLogStatistics();
+        return Result.success(statistics);
     }
 
     /**
@@ -129,13 +119,8 @@ public class OperationLogController {
     public Result<Map<String, Object>> getUserLogStatistics(@PathVariable Long userId) {
         log.info("获取用户操作统计: userId={}", userId);
 
-        try {
-            Map<String, Object> statistics = operationLogService.getUserLogStatistics(userId);
-            return Result.success(statistics);
-        } catch (Exception e) {
-            log.error("获取用户操作统计失败", e);
-            return Result.error("获取用户操作统计失败，请稍后重试");
-        }
+        Map<String, Object> statistics = operationLogService.getUserLogStatistics(userId);
+        return Result.success(statistics);
     }
 
     /**
@@ -153,21 +138,16 @@ public class OperationLogController {
 
         log.info("归档操作日志: beforeDays={}", beforeDays);
 
-        try {
-            LocalDateTime beforeTime = LocalDateTime.now().minusDays(beforeDays);
-            long count = operationLogService.archiveLogs(beforeTime);
+        LocalDateTime beforeTime = LocalDateTime.now().minusDays(beforeDays);
+        long count = operationLogService.archiveLogs(beforeTime);
 
-            Map<String, Object> result = Map.of(
-                    "archivedCount", count,
-                    "beforeTime", beforeTime,
-                    "message", String.format("成功归档 %d 条操作日志", count)
-            );
+        Map<String, Object> result = Map.of(
+                "archivedCount", count,
+                "beforeTime", beforeTime,
+                "message", String.format("成功归档 %d 条操作日志", count)
+        );
 
-            return Result.success(result);
-        } catch (Exception e) {
-            log.error("归档操作日志失败", e);
-            return Result.error("归档操作日志失败，请稍后重试");
-        }
+        return Result.success(result);
     }
 
     /**
@@ -197,11 +177,6 @@ public class OperationLogController {
         log.info("导出操作日志: userId={}, module={}, operationType={}, startTime={}, endTime={}",
                 userId, module, operationType, startTime, endTime);
 
-        // TODO: 实现Excel导出功能
-        // 1. 查询数据
-        // 2. 使用POI或EasyExcel生成Excel文件
-        // 3. 返回文件下载链接或直接返回文件流
-
-        return Result.success("导出功能待实现", "export_url");
+        return Result.error(501, "导出功能暂未实现");
     }
 }

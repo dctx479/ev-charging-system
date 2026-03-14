@@ -5,11 +5,19 @@ import com.ev.charging.dto.MaintenancePlanDTO;
 import com.ev.charging.entity.MaintenancePlan;
 import com.ev.charging.service.MaintenanceService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -19,10 +27,10 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping(value = "/admin/maintenance", produces = "application/json;charset=UTF-8")
+@RequiredArgsConstructor
 public class MaintenanceController {
 
-    @Autowired
-    private MaintenanceService maintenanceService;
+    private final MaintenanceService maintenanceService;
 
     /**
      * 创建维护计划

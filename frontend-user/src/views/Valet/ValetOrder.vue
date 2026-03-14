@@ -16,7 +16,7 @@
       />
 
       <!-- 车辆信息 -->
-      <van-cell-group title="车辆信息" inset style="margin-top: 16px">
+      <van-cell-group title="车辆信息" inset class="section-spacing">
         <van-form ref="formRef">
           <van-field
             v-model="formData.vehiclePlate"
@@ -65,7 +65,7 @@
       </van-cell-group>
 
       <!-- 充电桩选择 -->
-      <van-cell-group title="充电桩选择" inset style="margin-top: 16px">
+      <van-cell-group title="充电桩选择" inset class="section-spacing">
         <van-cell
           title="选择充电桩"
           :value="selectedPile ? selectedPile.pileNo : '请选择'"
@@ -79,7 +79,7 @@
       </van-cell-group>
 
       <!-- 时间要求 -->
-      <van-cell-group title="时间要求" inset style="margin-top: 16px">
+      <van-cell-group title="时间要求" inset class="section-spacing">
         <van-cell
           title="期望完成时间"
           :value="expectedTimeText"
@@ -99,7 +99,7 @@
       </van-cell-group>
 
       <!-- 费用预估 -->
-      <van-cell-group v-if="costEstimate" title="费用预估" inset style="margin-top: 16px">
+      <van-cell-group v-if="costEstimate" title="费用预估" inset class="section-spacing">
         <van-cell title="预计充电量" :value="`${costEstimate.chargeAmount} kWh`" />
         <van-cell title="预计充电费" :value="`¥${costEstimate.chargeFee}`" />
         <van-cell title="服务费" :value="`¥${costEstimate.serviceFee}`" />
@@ -137,7 +137,7 @@
     <van-popup
       v-model:show="showPileSelector"
       position="bottom"
-      :style="{ height: '70%' }"
+      class="pile-selector-popup"
       round
     >
       <div class="pile-selector">
@@ -544,6 +544,14 @@ onMounted(() => {
         }
       }
     }
+  }
+
+  .section-spacing {
+    margin-top: 16px;
+  }
+
+  .pile-selector-popup {
+    height: 70%;
   }
 }
 </style>

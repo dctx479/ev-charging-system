@@ -1,6 +1,15 @@
 package com.ev.charging.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -30,7 +39,7 @@ public class ChargingStation {
      * 运营商关系（延迟加载）
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @jakarta.persistence.JoinColumn(name = "operator_id", insertable = false, updatable = false)
+    @JoinColumn(name = "operator_id", insertable = false, updatable = false)
     private Operator operator;
 
     /**
@@ -149,13 +158,13 @@ public class ChargingStation {
      * 光伏装机容量(kW)
      */
     @Column(name = "solar_capacity", precision = 8, scale = 2)
-    private java.math.BigDecimal solarCapacity;
+    private BigDecimal solarCapacity;
 
     /**
      * 储能容量(kWh)
      */
     @Column(name = "storage_capacity", precision = 8, scale = 2)
-    private java.math.BigDecimal storageCapacity;
+    private BigDecimal storageCapacity;
 
     /**
      * 创建时间

@@ -36,7 +36,8 @@ public class OperationLogAspect {
 
     // 敏感字段列表（用于脱敏）
     private static final List<String> SENSITIVE_FIELDS = List.of(
-        "password", "oldPassword", "newPassword", "token", "secret", "key"
+        "password", "oldPassword", "newPassword", "token", "secret", "key",
+        "idCard", "creditCard", "bankAccount", "apiKey"
     );
 
     /**

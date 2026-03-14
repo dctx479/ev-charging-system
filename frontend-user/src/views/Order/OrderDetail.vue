@@ -40,7 +40,7 @@
       </van-cell-group>
 
       <!-- 充电详情 -->
-      <van-cell-group title="充电详情" inset style="margin-top: 16px">
+      <van-cell-group title="充电详情" inset class="section-spacing">
         <van-cell title="订单号" :value="orderInfo.orderNo" icon="records" />
         <van-cell title="开始时间" :value="formatTime(orderInfo.startTime)" icon="clock-o" />
         <van-cell title="结束时间" :value="orderInfo.orderStatus === 2 ? '充电中...' : formatTime(orderInfo.endTime)" icon="clock-o" />
@@ -55,7 +55,7 @@
       </van-cell-group>
 
       <!-- 费用明细 -->
-      <van-cell-group title="费用明细" inset style="margin-top: 16px">
+      <van-cell-group title="费用明细" inset class="section-spacing">
         <van-cell title="电费" :label="getPriceTypeLabel(orderInfo.priceType)" icon="gold-coin-o">
           <template #value>
             <span class="fee-value">¥{{ (orderInfo.electricityFee || 0).toFixed(2) }}</span>
@@ -74,7 +74,7 @@
       </van-cell-group>
 
       <!-- 碳积分信息（已支付订单显示） -->
-      <van-cell-group v-if="orderInfo.paymentStatus === 1 && orderInfo.orderStatus === 3" title="碳积分奖励" inset style="margin-top: 16px">
+      <van-cell-group v-if="orderInfo.paymentStatus === 1 && orderInfo.orderStatus === 3" title="碳积分奖励" inset class="section-spacing">
         <div class="carbon-reward-card">
           <van-icon name="certificate" size="40" color="#07c160" />
           <div class="reward-info">
@@ -87,7 +87,7 @@
       </van-cell-group>
 
       <!-- 支付信息 -->
-      <van-cell-group v-if="orderInfo.paymentStatus !== 0" title="支付信息" inset style="margin-top: 16px">
+      <van-cell-group v-if="orderInfo.paymentStatus !== 0" title="支付信息" inset class="section-spacing">
         <van-cell title="支付状态" :value="getPaymentStatusText(orderInfo.paymentStatus)" icon="success">
           <template #value>
             <van-tag :type="getPaymentStatusTagType(orderInfo.paymentStatus)">
@@ -181,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showToast, showDialog } from 'vant'
 import { getOrderDetail, payOrder } from '@/api/order'
@@ -199,6 +199,8 @@ const showPaymentSheet = ref(false)
 const showPaymentConfirm = ref(false)
 const showSuccessOverlay = ref(false)
 const selectedPaymentMethod = ref({})
+
+let successTimerRef = null
 
 const paymentActions = [
   { name: '微信支付', value: 1, icon: 'wechat' },
@@ -268,7 +270,7 @@ const handleConfirmPay = async () => {
     showSuccessOverlay.value = true
 
     // 2秒后关闭动画
-    setTimeout(() => {
+    successTimerRef = setTimeout(() => {
       showSuccessOverlay.value = false
       showToast('支付成功')
     }, 2000)
@@ -442,6 +444,14 @@ const formatTime = (time) => {
 const onBack = () => {
   router.back()
 }
+
+onBeforeUnmount(() => {
+  // 清理所有定时器
+  if (successTimerRef) {
+    clearTimeout(successTimerRef)
+    successTimerRef = null
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -662,5 +672,9 @@ const onBack = () => {
   padding-left: 16px;
   font-weight: 600;
   color: #323233;
+}
+
+.section-spacing {
+  margin-top: 16px;
 }
 </style>

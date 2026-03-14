@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -30,11 +31,13 @@ public class RefundDTO {
      */
     @Schema(description = "退款原因说明", example = "设备故障导致充电中断", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "退款原因不能为空")
+    @Size(max = 500, message = "退款原因长度不能超过500个字符")
     private String refundReason;
 
     /**
      * 操作人（管理员）
      */
     @Schema(description = "操作人（管理员姓名）", example = "张三")
+    @Size(max = 50, message = "操作人长度不能超过50个字符")
     private String operator;
 }

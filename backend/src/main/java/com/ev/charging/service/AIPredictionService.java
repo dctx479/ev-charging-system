@@ -1,8 +1,12 @@
 package com.ev.charging.service;
 
-import com.ev.charging.dto.AIPredictionDTO.*;
+import com.ev.charging.dto.AIPredictionDTO.DurationPredictRequest;
+import com.ev.charging.dto.AIPredictionDTO.DurationPredictResponse;
+import com.ev.charging.dto.AIPredictionDTO.FaultPredictRequest;
+import com.ev.charging.dto.AIPredictionDTO.FaultPredictResponse;
+import com.ev.charging.exception.BusinessException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
@@ -20,10 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class AIPredictionService {
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
     /**
      * AI服务基础URL，从配置文件读取
@@ -41,6 +45,42 @@ public class AIPredictionService {
     private static final long CIRCUIT_BREAK_DURATION = 30000;  // 熔断30秒后自动恢复
 
     /**
+     * 调用AI服务并解析响应的公共方法
+     *
+     * @param url     API端点URL
+     * @param request 请求体
+     * @return 解析后的data Map
+     * @throws RuntimeException 如果响应格式错误或AI服务返回错误
+     */
+    @SuppressWarnings("unchecked")
+    private java.util.Map<String, Object> callAIServiceAndParseData(String url, Object request) {
+        java.util.Map<String, Object> responseMap = restTemplate.postForObject(url, request, java.util.Map.class);
+
+        if (responseMap == null) {
+            log.error("AI服务返回空响应");
+            recordFailure();
+            throw new BusinessException("AI服务返回空响应");
+        }
+
+        Integer code = (Integer) responseMap.get("code");
+        if (code == null || code != 200) {
+            String message = (String) responseMap.getOrDefault("message", "AI服务调用失败");
+            log.error("AI服务返回错误: code={}, message={}", code, message);
+            recordFailure();
+            throw new BusinessException(message);
+        }
+
+        java.util.Map<String, Object> data = (java.util.Map<String, Object>) responseMap.get("data");
+        if (data == null) {
+            log.error("AI服务返回数据为空");
+            recordFailure();
+            throw new BusinessException("AI服务返回数据为空");
+        }
+
+        return data;
+    }
+
+    /**
      * 预测充电时长
      *
      * @param request 预测请求参数
@@ -51,49 +91,16 @@ public class AIPredictionService {
 
         log.info("调用AI服务预测充电时长: url={}, request={}", url, request);
 
-        // 检查熔断器状态
         if (isCircuitOpen()) {
             log.warn("AI服务熔断器打开，返回默认值");
             return getDefaultDurationResponse(request);
         }
 
         try {
-            // 验证请求参数
             validateDurationRequest(request);
 
-            // 调用AI服务，AI服务返回 {code, message, data} 格式
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> responseMap = restTemplate.postForObject(
-                    url,
-                    request,
-                    java.util.Map.class
-            );
+            java.util.Map<String, Object> data = callAIServiceAndParseData(url, request);
 
-            if (responseMap == null) {
-                log.error("AI服务返回空响应");
-                recordFailure();
-                throw new RuntimeException("AI服务返回空响应");
-            }
-
-            // 检查返回码
-            Integer code = (Integer) responseMap.get("code");
-            if (code == null || code != 200) {
-                String message = (String) responseMap.getOrDefault("message", "AI服务调用失败");
-                log.error("AI服务返回错误: code={}, message={}", code, message);
-                recordFailure();
-                throw new RuntimeException(message);
-            }
-
-            // 提取data部分
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> data = (java.util.Map<String, Object>) responseMap.get("data");
-            if (data == null) {
-                log.error("AI服务返回数据为空");
-                recordFailure();
-                throw new RuntimeException("AI服务返回数据为空");
-            }
-
-            // 构造响应对象
             DurationPredictResponse response = new DurationPredictResponse();
             Object durationObj = data.get("duration");
             Object chargeAmountObj = data.get("charge_amount");
@@ -102,13 +109,12 @@ public class AIPredictionService {
                 log.error("AI服务返回数据字段缺失: duration={}, charge_amount={}, estimated_cost={}",
                         durationObj, chargeAmountObj, estimatedCostObj);
                 recordFailure();
-                throw new RuntimeException("AI服务返回数据格式错误");
+                throw new BusinessException("AI服务返回数据格式错误");
             }
             response.setDuration(new BigDecimal(durationObj.toString()));
             response.setChargeAmount(new BigDecimal(chargeAmountObj.toString()));
             response.setEstimatedCost(new BigDecimal(estimatedCostObj.toString()));
 
-            // 成功重置失败计数
             resetFailure();
 
             log.info("充电时长预测成功: duration={}分钟, chargeAmount={}kWh, estimatedCost={}元",
@@ -149,59 +155,25 @@ public class AIPredictionService {
 
         log.info("调用AI服务预测故障概率: url={}, request={}", url, request);
 
-        // 检查熔断器状态
         if (isCircuitOpen()) {
             log.warn("AI服务熔断器打开，返回默认值");
             return getDefaultFaultResponse();
         }
 
         try {
-            // 验证请求参数
             validateFaultRequest(request);
 
-            // 调用AI服务，AI服务返回 {code, message, data} 格式
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> responseMap = restTemplate.postForObject(
-                    url,
-                    request,
-                    java.util.Map.class
-            );
+            java.util.Map<String, Object> data = callAIServiceAndParseData(url, request);
 
-            if (responseMap == null) {
-                log.error("AI服务返回空响应");
-                recordFailure();
-                throw new RuntimeException("AI服务返回空响应");
-            }
-
-            // 检查返回码
-            Integer code = (Integer) responseMap.get("code");
-            if (code == null || code != 200) {
-                String message = (String) responseMap.getOrDefault("message", "AI服务调用失败");
-                log.error("AI服务返回错误: code={}, message={}", code, message);
-                recordFailure();
-                throw new RuntimeException(message);
-            }
-
-            // 提取data部分
-            @SuppressWarnings("unchecked")
-            java.util.Map<String, Object> data = (java.util.Map<String, Object>) responseMap.get("data");
-            if (data == null) {
-                log.error("AI服务返回数据为空");
-                recordFailure();
-                throw new RuntimeException("AI服务返回数据为空");
-            }
-
-            // 构造响应对象
             FaultPredictResponse response = new FaultPredictResponse();
             Object faultProbObj = data.get("fault_probability");
             if (faultProbObj == null) {
                 log.error("AI服务返回数据字段缺失: fault_probability=null");
                 recordFailure();
-                throw new RuntimeException("AI服务返回数据格式错误");
+                throw new BusinessException("AI服务返回数据格式错误");
             }
             response.setFaultProbability(new BigDecimal(faultProbObj.toString()));
 
-            // Safe type casting for will_fault (avoid ClassCastException)
             Object willFaultObj = data.get("will_fault");
             if (willFaultObj instanceof Boolean) {
                 response.setWillFault((Boolean) willFaultObj);
@@ -213,11 +185,8 @@ public class AIPredictionService {
 
             Object suggestionObj = data.get("suggestion");
             response.setSuggestion(suggestionObj != null ? suggestionObj.toString() : "正常运行");
-
-            // 计算风险等级
             response.calculateRiskLevel();
 
-            // 成功重置失败计数
             resetFailure();
 
             log.info("故障预测成功: faultProbability={}%, willFault={}, riskLevel={}, suggestion={}",

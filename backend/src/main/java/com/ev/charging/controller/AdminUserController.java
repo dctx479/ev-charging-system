@@ -19,7 +19,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
@@ -72,18 +79,13 @@ public class AdminUserController {
         log.info("获取用户列表: page={}, size={}, userType={}, status={}, keyword={}",
                 page, size, userType, status, keyword);
 
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
-            Page<User> users = userService.getUserList(pageable, userType, status, keyword);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
+        Page<User> users = userService.getUserList(pageable, userType, status, keyword);
 
-            // 转换为 AdminUserVO
-            Page<AdminUserVO> adminUserVOPage = users.map(AdminUserVO::fromUser);
+        // 转换为 AdminUserVO
+        Page<AdminUserVO> adminUserVOPage = users.map(AdminUserVO::fromUser);
 
-            return Result.success(adminUserVOPage);
-        } catch (Exception e) {
-            log.error("获取用户列表失败", e);
-            return Result.error("获取用户列表失败，请稍后重试");
-        }
+        return Result.success(adminUserVOPage);
     }
 
     /**
@@ -119,18 +121,13 @@ public class AdminUserController {
 
         log.info("获取代充师傅列表: page={}, size={}, status={}, keyword={}", page, size, status, keyword);
 
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
-            Page<User> chargers = userService.getUserList(pageable, "VALET_CHARGER", status, keyword);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
+        Page<User> chargers = userService.getUserList(pageable, "VALET_CHARGER", status, keyword);
 
-            // 转换为 AdminUserVO
-            Page<AdminUserVO> adminUserVOPage = chargers.map(AdminUserVO::fromUser);
+        // 转换为 AdminUserVO
+        Page<AdminUserVO> adminUserVOPage = chargers.map(AdminUserVO::fromUser);
 
-            return Result.success(adminUserVOPage);
-        } catch (Exception e) {
-            log.error("获取代充师傅列表失败", e);
-            return Result.error("获取代充师傅列表失败，请稍后重试");
-        }
+        return Result.success(adminUserVOPage);
     }
 
     /**
@@ -166,18 +163,13 @@ public class AdminUserController {
 
         log.info("获取企业运营商列表: page={}, size={}, status={}, keyword={}", page, size, status, keyword);
 
-        try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
-            Page<User> operators = userService.getUserList(pageable, "OPERATOR", status, keyword);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createTime").descending());
+        Page<User> operators = userService.getUserList(pageable, "OPERATOR", status, keyword);
 
-            // 转换为 AdminUserVO
-            Page<AdminUserVO> adminUserVOPage = operators.map(AdminUserVO::fromUser);
+        // 转换为 AdminUserVO
+        Page<AdminUserVO> adminUserVOPage = operators.map(AdminUserVO::fromUser);
 
-            return Result.success(adminUserVOPage);
-        } catch (Exception e) {
-            log.error("获取企业运营商列表失败", e);
-            return Result.error("获取企业运营商列表失败，请稍后重试");
-        }
+        return Result.success(adminUserVOPage);
     }
 
     /**
@@ -217,16 +209,8 @@ public class AdminUserController {
 
         log.info("审核用户: userId={}, approved={}, reason={}", userId, approved, reason);
 
-        try {
-            userService.reviewUser(userId, approved, reason);
-            return Result.success(approved ? "审核通过" : "审核拒绝", null);
-        } catch (IllegalArgumentException e) {
-            log.warn("审核用户参数错误: {}", e.getMessage());
-            return Result.error(e.getMessage());
-        } catch (Exception e) {
-            log.error("审核用户失败", e);
-            return Result.error("审核用户失败，请稍后重试");
-        }
+        userService.reviewUser(userId, approved, reason);
+        return Result.success(approved ? "审核通过" : "审核拒绝", null);
     }
 
     /**
@@ -261,16 +245,8 @@ public class AdminUserController {
 
         log.info("更新用户状态: userId={}, status={}", userId, status);
 
-        try {
-            userService.updateUserStatus(userId, status);
-            return Result.success("状态更新成功", null);
-        } catch (IllegalArgumentException e) {
-            log.warn("更新用户状态参数错误: {}", e.getMessage());
-            return Result.error(e.getMessage());
-        } catch (Exception e) {
-            log.error("更新用户状态失败", e);
-            return Result.error("更新用户状态失败，请稍后重试");
-        }
+        userService.updateUserStatus(userId, status);
+        return Result.success("状态更新成功", null);
     }
 
     /**
@@ -297,13 +273,8 @@ public class AdminUserController {
             @PathVariable Long userId) {
         log.info("获取用户详情: userId={}", userId);
 
-        try {
-            User user = userService.getUserById(userId);
-            return Result.success(AdminUserVO.fromUser(user));
-        } catch (Exception e) {
-            log.error("获取用户详情失败", e);
-            return Result.error("获取用户详情失败，请稍后重试");
-        }
+        User user = userService.getUserById(userId);
+        return Result.success(AdminUserVO.fromUser(user));
     }
 
     /**
@@ -326,12 +297,7 @@ public class AdminUserController {
     public Result<Map<String, Object>> getUserStatistics() {
         log.info("获取用户统计信息");
 
-        try {
-            Map<String, Object> statistics = userService.getUserStatistics();
-            return Result.success(statistics);
-        } catch (Exception e) {
-            log.error("获取用户统计信息失败", e);
-            return Result.error("获取用户统计信息失败，请稍后重试");
-        }
+        Map<String, Object> statistics = userService.getUserStatistics();
+        return Result.success(statistics);
     }
 }

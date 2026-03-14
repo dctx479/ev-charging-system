@@ -1,6 +1,9 @@
 package com.ev.charging.controller;
 
 import com.ev.charging.common.Result;
+import com.ev.charging.dto.ChangePasswordDTO;
+import com.ev.charging.dto.RechargeDTO;
+import com.ev.charging.dto.WithdrawDTO;
 import com.ev.charging.entity.User;
 import com.ev.charging.repository.UserRepository;
 import com.ev.charging.service.UserService;
@@ -13,10 +16,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -116,26 +128,10 @@ public class UserController {
     @Transactional(rollbackFor = Exception.class)
     public Result<Void> recharge(
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
-            @Parameter(description = "充值参数：amount-充值金额，paymentMethod-支付方式", required = true)
-            @RequestBody Map<String, Object> params) {
-        // 参数校验
-        if (params.get("amount") == null) {
-            return Result.error("充值金额不能为空");
-        }
-        BigDecimal amount;
-        try {
-            amount = new BigDecimal(params.get("amount").toString());
-        } catch (NumberFormatException e) {
-            return Result.error("充值金额格式不正确");
-        }
-
-        // 金额校验
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            return Result.error("充值金额必须大于0");
-        }
-
+            @Parameter(description = "充值参数", required = true)
+            @RequestBody @Valid RechargeDTO dto) {
         // 使用原子操作增加余额，防止并发竞态条件
-        int updated = userRepository.addBalanceAtomically(userId, amount);
+        int updated = userRepository.addBalanceAtomically(userId, dto.getAmount());
         if (updated == 0) {
             return Result.error("充值失败，用户不存在");
         }
@@ -160,26 +156,10 @@ public class UserController {
     @Transactional(rollbackFor = Exception.class)
     public Result<Void> withdraw(
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
-            @Parameter(description = "提现参数：amount-提现金额，bankAccount-银行账号", required = true)
-            @RequestBody Map<String, Object> params) {
-        // 参数校验
-        if (params.get("amount") == null) {
-            return Result.error("提现金额不能为空");
-        }
-        BigDecimal amount;
-        try {
-            amount = new BigDecimal(params.get("amount").toString());
-        } catch (NumberFormatException e) {
-            return Result.error("提现金额格式不正确");
-        }
-
-        // 金额校验
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            return Result.error("提现金额必须大于0");
-        }
-
+            @Parameter(description = "提现参数", required = true)
+            @RequestBody @Valid WithdrawDTO dto) {
         // 使用原子操作扣减余额，同时检查余额是否充足，防止并发竞态条件
-        int updated = userRepository.deductBalanceAtomically(userId, amount);
+        int updated = userRepository.deductBalanceAtomically(userId, dto.getAmount());
         if (updated == 0) {
             return Result.error("余额不足或用户不存在");
         }
@@ -235,19 +215,13 @@ public class UserController {
     @PutMapping("/password")
     public Result<Void> changePassword(
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
-            @Parameter(description = "密码修改参数：oldPassword-旧密码，newPassword-新密码", required = true)
-            @RequestBody Map<String, String> params) {
-        String oldPassword = params.get("oldPassword");
-        String newPassword = params.get("newPassword");
-
+            @Parameter(description = "密码修改参数", required = true)
+            @RequestBody @Valid ChangePasswordDTO dto) {
         try {
-            userService.changePassword(userId, oldPassword, newPassword);
+            userService.changePassword(userId, dto.getOldPassword(), dto.getNewPassword());
             return Result.success("密码修改成功", null);
         } catch (IllegalArgumentException e) {
-            return Result.error(e.getMessage());
-        } catch (Exception e) {
-            log.error("密码修改失败", e);
-            return Result.error("密码修改失败，请稍后重试");
+            return Result.error("密码修改失败，请检查旧密码是否正确");
         }
     }
 

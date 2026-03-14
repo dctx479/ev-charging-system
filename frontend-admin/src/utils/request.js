@@ -12,12 +12,33 @@ const request = axios.create({
   responseType: 'json'
 })
 
+// Duplicate request prevention - track pending requests
+const pendingRequests = new Map()
+
+function generateReqKey(config) {
+  const { method, url, params, data } = config
+  return [method, url, JSON.stringify(params), JSON.stringify(data)].join('&')
+}
+
 request.interceptors.request.use(
   config => {
     const token = localStorage.getItem('admin_token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
+
+    // Check if request is already pending
+    const reqKey = generateReqKey(config)
+    if (pendingRequests.has(reqKey)) {
+      const controller = pendingRequests.get(reqKey)
+      controller.abort()
+    }
+
+    // Create AbortController for this request
+    const controller = new AbortController()
+    config.signal = controller.signal
+    pendingRequests.set(reqKey, controller)
+
     return config
   },
   error => {
@@ -50,6 +71,10 @@ export function resetLoginRedirectTime() {
 
 request.interceptors.response.use(
   response => {
+    // Remove from pending requests
+    const reqKey = generateReqKey(response.config)
+    pendingRequests.delete(reqKey)
+
     // blob 类型响应（文件下载）直接返回，不做业务码判断
     if (response.config.responseType === 'blob') {
       return response
@@ -68,6 +93,17 @@ request.interceptors.response.use(
     return res
   },
   error => {
+    // Remove from pending requests on error
+    if (error.config) {
+      const reqKey = generateReqKey(error.config)
+      pendingRequests.delete(reqKey)
+    }
+
+    // Skip error message for cancelled/aborted requests
+    if (axios.isCancel(error) || error.name === 'CanceledError') {
+      return Promise.reject(error)
+    }
+
     // 增强错误处理：区分不同HTTP状态码
     const status = error.response?.status
     const serverMsg = error.response?.data?.message

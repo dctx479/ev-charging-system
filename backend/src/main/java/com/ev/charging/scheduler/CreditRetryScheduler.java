@@ -3,8 +3,8 @@ package com.ev.charging.scheduler;
 import com.ev.charging.entity.CreditPendingRecord;
 import com.ev.charging.repository.CreditPendingRecordRepository;
 import com.ev.charging.service.CarbonCreditService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,13 +16,12 @@ import java.util.List;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class CreditRetryScheduler {
 
-    @Autowired
-    private CreditPendingRecordRepository creditPendingRecordRepository;
+    private final CreditPendingRecordRepository creditPendingRecordRepository;
 
-    @Autowired
-    private CarbonCreditService carbonCreditService;
+    private final CarbonCreditService carbonCreditService;
 
     /**
      * 最大重试次数
@@ -119,6 +118,10 @@ public class CreditRetryScheduler {
      */
     public void retryNow() {
         log.info("手动触发积分重试任务");
-        doRetryPendingCredits();
+        try {
+            doRetryPendingCredits();
+        } catch (Exception e) {
+            log.error("手动积分重试任务异常", e);
+        }
     }
 }

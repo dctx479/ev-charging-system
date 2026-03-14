@@ -2,7 +2,7 @@ package com.ev.charging.websocket;
 
 import com.ev.charging.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -23,11 +23,11 @@ import java.util.Map;
  * 4. 验证失败则拒绝握手
  */
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
     /**
      * 握手前处理 - 进行JWT认证

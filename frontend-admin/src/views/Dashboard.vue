@@ -91,7 +91,7 @@
     <!-- 站点收入排行榜 -->
     <el-row :gutter="20">
       <el-col :span="24">
-        <el-card>
+        <el-card v-loading="loading">
           <template #header>
             <div class="card-header">
               <span>站点收入排行榜（Top 5）</span>
@@ -148,6 +148,7 @@ const trendData = ref({
 
 const pileStatusData = ref([])
 const stationRanking = ref([])
+const loading = ref(false)
 
 // 图表实例
 const trendChartRef = ref(null)
@@ -169,7 +170,10 @@ const fetchDashboardStats = async () => {
       faultPileCount: 0
     }
   } catch (error) {
-    console.error('获取统计数据失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取统计数据失败:', error)
+    }
+    ElMessage.error('获取统计数据失败，请重试')
   }
 }
 
@@ -180,7 +184,10 @@ const fetchChargeTrend = async () => {
     trendData.value = res.data || { dates: [], chargeAmounts: [] }
     initTrendChart()
   } catch (error) {
-    console.error('获取趋势数据失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取趋势数据失败:', error)
+    }
+    ElMessage.error('获取趋势数据失败，请重试')
   }
 }
 
@@ -199,7 +206,10 @@ const fetchPileStatusDistribution = async () => {
     ].filter(item => item.value > 0)  // 过滤掉值为0的项
     initPieChart()
   } catch (error) {
-    console.error('获取状态分布失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取状态分布失败:', error)
+    }
+    ElMessage.error('获取状态分布失败，请重试')
   }
 }
 
@@ -216,7 +226,10 @@ const fetchStationRanking = async () => {
       orderCount: item.totalOrderCount || 0
     }))
   } catch (error) {
-    console.error('获取站点排行失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取站点排行失败:', error)
+    }
+    ElMessage.error('获取站点排行失败，请重试')
   }
 }
 
@@ -335,22 +348,24 @@ const initPieChart = () => {
 }
 
 // 防抖函数（优化resize性能）
+let resizeTimeout = null
 const debounce = (func, wait) => {
-  let timeout
   return function executedFunction(...args) {
     const later = () => {
-      clearTimeout(timeout)
+      resizeTimeout = null
       func(...args)
     }
-    clearTimeout(timeout)
-    timeout = setTimeout(later, wait)
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout)
+    }
+    resizeTimeout = setTimeout(later, wait)
   }
 }
 
 // 窗口大小变化时重绘图表（使用防抖优化）
 const handleResize = debounce(() => {
-  trendChart?.resize()
-  pieChart?.resize()
+  if (trendChart && !trendChart.isDisposed()) trendChart.resize()
+  if (pieChart && !pieChart.isDisposed()) pieChart.resize()
 }, 300)
 
 // 初始化 WebSocket 连接
@@ -361,7 +376,9 @@ const initWebSocket = () => {
 
   // 监听 WebSocket 消息
   wsClient.onMessage((message) => {
-    console.log('收到 WebSocket 消息:', message)
+    if (import.meta.env.DEV) {
+      console.log('收到 WebSocket 消息:', message)
+    }
 
     // 处理充电桩状态更新消息
     if (message.type === 'pile_status_update') {
@@ -395,13 +412,19 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  // Clear resize timeout
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+    resizeTimeout = null
+  }
+
   // 销毁ECharts实例并清除引用
-  if (trendChart) {
+  if (trendChart && !trendChart.isDisposed()) {
     trendChart.dispose()
     trendChart = null
   }
 
-  if (pieChart) {
+  if (pieChart && !pieChart.isDisposed()) {
     pieChart.dispose()
     pieChart = null
   }

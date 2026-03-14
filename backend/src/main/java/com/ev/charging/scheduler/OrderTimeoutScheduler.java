@@ -6,8 +6,8 @@ import com.ev.charging.entity.ChargingPile;
 import com.ev.charging.repository.ChargeOrderRepository;
 import com.ev.charging.repository.ChargingPileRepository;
 import com.ev.charging.service.CacheService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,19 +28,16 @@ import java.util.List;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class OrderTimeoutScheduler {
 
-    @Autowired
-    private ChargeOrderRepository orderRepository;
+    private final ChargeOrderRepository orderRepository;
 
-    @Autowired
-    private ChargingPileRepository pileRepository;
+    private final ChargingPileRepository pileRepository;
 
-    @Autowired
-    private CacheService cacheService;
+    private final CacheService cacheService;
 
-    @Autowired
-    private ApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
 
     /**
      * 充电超时时长（小时）

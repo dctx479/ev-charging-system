@@ -63,7 +63,7 @@
             <span class="slider-value">{{ strategyForm.minPrice }} 元/kWh</span>
           </template>
         </van-field>
-        <div style="margin: 16px;">
+        <div class="strategy-button-wrapper">
           <van-button round block type="primary" native-type="submit">
             保存策略
           </van-button>
@@ -475,5 +475,9 @@ onMounted(() => {
 
 .history-group {
   margin-top: 12px;
+}
+
+.strategy-button-wrapper {
+  margin: 16px;
 }
 </style>

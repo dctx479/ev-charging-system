@@ -27,7 +27,7 @@
       </van-cell-group>
 
       <!-- 放电状态 -->
-      <van-cell-group v-if="isDischarging" title="放电状态" inset style="margin-top: 16px">
+      <van-cell-group v-if="isDischarging" title="放电状态" inset class="discharge-status-group">
         <van-cell title="放电功率" :value="`${dischargeStatus.power} kW`" />
         <van-cell title="已放电量" :value="`${dischargeStatus.discharged.toFixed(2)} kWh`" />
         <van-cell title="当前收益" :value="`¥${dischargeStatus.income.toFixed(2)}`" />
@@ -47,7 +47,7 @@
       </van-cell-group>
 
       <!-- 放电控制面板 -->
-      <van-cell-group v-if="!isDischarging" title="放电策略配置" inset style="margin-top: 16px">
+      <van-cell-group v-if="!isDischarging" title="放电策略配置" inset class="strategy-config-group">
         <van-form @submit="onSubmit">
           <van-field
             v-model="formData.pileId"
@@ -94,7 +94,7 @@
       </van-cell-group>
 
       <!-- 收益预估计算器 -->
-      <van-cell-group v-if="!isDischarging" title="收益预估" inset style="margin-top: 16px">
+      <van-cell-group v-if="!isDischarging" title="收益预估" inset class="profit-estimate-group">
         <van-cell>
           <van-button
             type="primary"
@@ -111,7 +111,7 @@
       </van-cell-group>
 
       <!-- 历史放电记录 -->
-      <van-cell-group title="历史记录" inset style="margin-top: 16px">
+      <van-cell-group title="历史记录" inset class="history-records-group">
         <van-list
           v-model:loading="loading"
           :finished="finished"
@@ -490,6 +490,22 @@ onBeforeUnmount(() => {
 
   :deep(.van-progress) {
     width: 100%;
+  }
+
+  .discharge-status-group {
+    margin-top: 16px;
+  }
+
+  .strategy-config-group {
+    margin-top: 16px;
+  }
+
+  .profit-estimate-group {
+    margin-top: 16px;
+  }
+
+  .history-records-group {
+    margin-top: 16px;
   }
 }
 </style>

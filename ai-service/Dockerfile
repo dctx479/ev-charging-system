@@ -26,6 +26,11 @@ COPY . .
 # Create models directory if it doesn't exist
 RUN mkdir -p models
 
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
 # Expose port
 EXPOSE 5000
 

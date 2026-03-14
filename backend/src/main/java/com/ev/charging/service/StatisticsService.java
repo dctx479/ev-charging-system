@@ -4,9 +4,12 @@ import com.ev.charging.entity.ChargingPile;
 import com.ev.charging.repository.ChargingPileRepository;
 import com.ev.charging.repository.ChargingStationRepository;
 import com.ev.charging.repository.FaultRecordRepository;
-import com.ev.charging.vo.*;
+import com.ev.charging.vo.ChargeTrendVO;
+import com.ev.charging.vo.DashboardVO;
+import com.ev.charging.vo.PileStatusDistributionVO;
+import com.ev.charging.vo.StationRankingVO;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +17,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -22,19 +29,13 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class StatisticsService {
 
-    @Autowired
-    private ChargingPileRepository chargingPileRepository;
-
-    @Autowired
-    private ChargingStationRepository chargingStationRepository;
-
-    @Autowired
-    private FaultRecordRepository faultRecordRepository;
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final ChargingPileRepository chargingPileRepository;
+    private final ChargingStationRepository chargingStationRepository;
+    private final FaultRecordRepository faultRecordRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * 获取仪表板数据

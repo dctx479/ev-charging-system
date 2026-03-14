@@ -2,10 +2,11 @@ package com.ev.charging.service;
 
 import com.ev.charging.dto.MaintenancePlanDTO;
 import com.ev.charging.entity.MaintenancePlan;
+import com.ev.charging.exception.BusinessException;
 import com.ev.charging.repository.MaintenancePlanRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,10 +22,10 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class MaintenanceService {
 
-    @Autowired
-    private MaintenancePlanRepository maintenancePlanRepository;
+    private final MaintenancePlanRepository maintenancePlanRepository;
 
     /**
      * 创建维护计划
@@ -71,7 +72,7 @@ public class MaintenanceService {
         log.info("更新维护计划状态: planId={}, status={}", planId, status);
 
         MaintenancePlan plan = maintenancePlanRepository.findById(planId)
-                .orElseThrow(() -> new RuntimeException("维护计划不存在"));
+                .orElseThrow(() -> new BusinessException("维护计划不存在"));
 
         plan.setMaintenanceStatus(status);
         plan.setMaintenanceNote(note);

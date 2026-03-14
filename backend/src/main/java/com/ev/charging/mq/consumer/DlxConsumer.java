@@ -10,8 +10,10 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 /**
@@ -32,7 +34,7 @@ import java.util.Map;
 @Slf4j
 public class DlxConsumer {
 
-    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @RabbitListener(queues = RabbitMQConfig.DLX_QUEUE)
     public void handleDeadLetter(Message message,
@@ -41,7 +43,8 @@ public class DlxConsumer {
         try {
             String messageBody = new String(message.getBody(), StandardCharsets.UTF_8);
             long currentTime = System.currentTimeMillis();
-            String timestamp = dateFormat.format(new Date(currentTime));
+            String timestamp = LocalDateTime.ofInstant(Instant.ofEpochMilli(currentTime), ZoneId.systemDefault())
+                    .format(DATE_FORMATTER);
 
             log.error("================== 死信消息警告 ==================");
             log.error("[时间] {}", timestamp);
@@ -144,7 +147,7 @@ public class DlxConsumer {
             String alertMessage = String.format(
                     "系统告警: MQ死信队列收到消息，需要人工排查处理。" +
                     "消息内容: %s, 时间: %s",
-                    messageBody, dateFormat.format(new Date())
+                    messageBody, LocalDateTime.now().format(DATE_FORMATTER)
             );
 
             // 这里仅记录告警日志

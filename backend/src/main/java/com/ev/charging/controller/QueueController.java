@@ -14,7 +14,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 排队管理控制器
@@ -30,10 +37,6 @@ public class QueueController {
 
     /**
      * 加入排队
-     *
-     * @param dto     请求参数
-     * @param request HTTP请求
-     * @return 排队记录ID
      */
     @Operation(
             summary = "加入排队",
@@ -43,8 +46,7 @@ public class QueueController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "加入排队成功"),
             @ApiResponse(responseCode = "400", description = "参数错误或已在排队中"),
-            @ApiResponse(responseCode = "401", description = "未登录"),
-            @ApiResponse(responseCode = "500", description = "服务器错误")
+            @ApiResponse(responseCode = "401", description = "未登录")
     })
     @PostMapping("/join")
     public Result<Long> joinQueue(
@@ -52,24 +54,12 @@ public class QueueController {
             @RequestBody @Valid JoinQueueDTO dto,
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId) {
         log.info("用户{}请求加入站点{}排队", userId, dto.getStationId());
-
-        try {
-            Long queueId = queueService.joinQueue(userId, dto);
-            return Result.success("加入排队成功", queueId);
-        } catch (IllegalArgumentException e) {
-            log.warn("加入排队失败: {}", e.getMessage());
-            return Result.error(400, e.getMessage());
-        } catch (Exception e) {
-            log.error("加入排队异常", e);
-            return Result.error(500, "系统异常，请稍后重试");
-        }
+        Long queueId = queueService.joinQueue(userId, dto);
+        return Result.success("加入排队成功", queueId);
     }
 
     /**
      * 获取我的排队状态
-     *
-     * @param request HTTP请求
-     * @return 排队状态
      */
     @Operation(
             summary = "获取我的排队状态",
@@ -78,14 +68,11 @@ public class QueueController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "查询成功"),
-            @ApiResponse(responseCode = "401", description = "未登录"),
-            @ApiResponse(responseCode = "404", description = "无排队记录"),
-            @ApiResponse(responseCode = "500", description = "服务器错误")
+            @ApiResponse(responseCode = "401", description = "未登录")
     })
     @GetMapping("/status")
     public Result<QueueStatusVO> getQueueStatus(@Parameter(hidden = true) @RequestAttribute("userId") Long userId) {
         log.info("用户{}查询排队状态", userId);
-
         try {
             QueueStatusVO status = queueService.getQueueStatus(userId);
             return Result.success(status);
@@ -93,17 +80,11 @@ public class QueueController {
             // 无排队记录属于正常状态，返回 null data 而非错误，避免前端显示错误提示
             log.info("用户{}当前无排队记录", userId);
             return Result.success(null);
-        } catch (Exception e) {
-            log.error("查询排队状态异常", e);
-            return Result.error(500, "系统异常，请稍后重试");
         }
     }
 
     /**
      * 离开队列
-     *
-     * @param request HTTP请求
-     * @return 操作结果
      */
     @Operation(
             summary = "离开队列",
@@ -113,55 +94,31 @@ public class QueueController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "离开成功"),
             @ApiResponse(responseCode = "400", description = "无排队记录"),
-            @ApiResponse(responseCode = "401", description = "未登录"),
-            @ApiResponse(responseCode = "500", description = "服务器错误")
+            @ApiResponse(responseCode = "401", description = "未登录")
     })
     @DeleteMapping("/leave")
     public Result<Void> leaveQueue(@Parameter(hidden = true) @RequestAttribute("userId") Long userId) {
         log.info("用户{}请求离开队列", userId);
-
-        try {
-            queueService.leaveQueue(userId);
-            return Result.success("已离开队列", null);
-        } catch (IllegalArgumentException e) {
-            log.warn("离开队列失败: {}", e.getMessage());
-            return Result.error(400, e.getMessage());
-        } catch (Exception e) {
-            log.error("离开队列异常", e);
-            return Result.error(500, "系统异常，请稍后重试");
-        }
+        queueService.leaveQueue(userId);
+        return Result.success("已离开队列", null);
     }
 
     /**
      * 获取站点排队信息
-     *
-     * @param stationId 充电站ID
-     * @return 排队信息
      */
     @Operation(
             summary = "获取站点排队信息",
             description = "查询指定充电站的排队情况，包括排队人数、预计等待时间等"
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "查询成功"),
-            @ApiResponse(responseCode = "404", description = "充电站不存在"),
-            @ApiResponse(responseCode = "500", description = "服务器错误")
+            @ApiResponse(responseCode = "200", description = "查询成功")
     })
     @GetMapping("/station/{stationId}")
     public Result<StationQueueInfoVO> getStationQueueInfo(
             @Parameter(description = "充电站ID", required = true, example = "1")
             @PathVariable Long stationId) {
         log.info("查询站点{}排队信息", stationId);
-
-        try {
-            StationQueueInfoVO info = queueService.getStationQueueInfo(stationId);
-            return Result.success(info);
-        } catch (IllegalArgumentException e) {
-            log.warn("查询站点排队信息失败: {}", e.getMessage());
-            return Result.error(404, e.getMessage());
-        } catch (Exception e) {
-            log.error("查询站点排队信息异常", e);
-            return Result.error(500, "系统异常，请稍后重试");
-        }
+        StationQueueInfoVO info = queueService.getStationQueueInfo(stationId);
+        return Result.success(info);
     }
 }

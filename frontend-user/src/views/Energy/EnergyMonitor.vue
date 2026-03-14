@@ -112,7 +112,7 @@
         <van-tab title="本月" name="month"></van-tab>
       </van-tabs>
       <div class="chart-container">
-        <div ref="chartRef" style="width: 100%; height: 300px;"></div>
+        <div ref="chartRef" class="chart-inner"></div>
       </div>
     </van-cell-group>
 
@@ -491,6 +491,11 @@ onBeforeUnmount(() => {
 .chart-container {
   padding: 16px;
   background: #fff;
+}
+
+.chart-inner {
+  width: 100%;
+  height: 300px;
 }
 
 .eco-section {

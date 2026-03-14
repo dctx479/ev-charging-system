@@ -6,49 +6,43 @@ import com.ev.charging.dto.RepairUpdateDTO;
 import com.ev.charging.entity.ChargingPile;
 import com.ev.charging.entity.ChargingStation;
 import com.ev.charging.entity.FaultRecord;
+import com.ev.charging.exception.BusinessException;
 import com.ev.charging.repository.ChargingPileRepository;
 import com.ev.charging.repository.ChargingStationRepository;
 import com.ev.charging.repository.FaultRecordRepository;
 import com.ev.charging.vo.FaultRecordVO;
 import com.ev.charging.websocket.PileStatusHandler;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 故障管理服务
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class FaultService {
 
-    @Autowired
-    private FaultRecordRepository faultRecordRepository;
-
-    @Autowired
-    private ChargingPileRepository chargingPileRepository;
-
-    @Autowired
-    private ChargingStationRepository chargingStationRepository;
-
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
-    @Autowired
-    private CacheService cacheService;
+    private final FaultRecordRepository faultRecordRepository;
+    private final ChargingPileRepository chargingPileRepository;
+    private final ChargingStationRepository chargingStationRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final CacheService cacheService;
 
     /**
      * 上报故障
@@ -56,6 +50,10 @@ public class FaultService {
     @Transactional(rollbackFor = Exception.class)
     public Long reportFault(FaultReportDTO dto) {
         log.info("上报故障: pileId={}, faultType={}", dto.getPileId(), dto.getFaultType());
+
+        // 先验证充电桩存在性，再创建故障记录
+        ChargingPile pile = chargingPileRepository.findById(dto.getPileId())
+                .orElseThrow(() -> new BusinessException("充电桩不存在"));
 
         // 创建故障记录
         FaultRecord faultRecord = FaultRecord.builder()
@@ -74,8 +72,6 @@ public class FaultService {
         FaultRecord saved = faultRecordRepository.save(faultRecord);
 
         // 更新充电桩状态为故障
-        ChargingPile pile = chargingPileRepository.findById(dto.getPileId())
-                .orElseThrow(() -> new RuntimeException("充电桩不存在"));
         pile.setStatus((byte) 4); // 4-故障
         chargingPileRepository.save(pile);
 
@@ -134,7 +130,7 @@ public class FaultService {
      */
     public FaultRecordVO getFaultById(Long id) {
         FaultRecord faultRecord = faultRecordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("故障记录不存在"));
+                .orElseThrow(() -> new BusinessException("故障记录不存在"));
 
         // 批量查询关联数据
         ChargingPile pile = chargingPileRepository.findById(faultRecord.getPileId()).orElse(null);
@@ -151,7 +147,7 @@ public class FaultService {
         log.info("更新维修状态: faultId={}, repairStatus={}", faultId, dto.getRepairStatus());
 
         FaultRecord faultRecord = faultRecordRepository.findById(faultId)
-                .orElseThrow(() -> new RuntimeException("故障记录不存在"));
+                .orElseThrow(() -> new BusinessException("故障记录不存在"));
 
         faultRecord.setRepairStatus(dto.getRepairStatus());
         faultRecord.setRepairPerson(dto.getRepairPerson());
@@ -165,7 +161,7 @@ public class FaultService {
         // 如果维修完成，更新充电桩状态为空闲
         if (dto.getRepairStatus() == 2) {
             ChargingPile pile = chargingPileRepository.findById(faultRecord.getPileId())
-                    .orElseThrow(() -> new RuntimeException("充电桩不存在"));
+                    .orElseThrow(() -> new BusinessException("充电桩不存在"));
             pile.setStatus((byte) 1); // 1-空闲
             pile.setHealthScore((byte) 100); // 重置健康度
             pile.setLastMaintenanceTime(LocalDateTime.now());

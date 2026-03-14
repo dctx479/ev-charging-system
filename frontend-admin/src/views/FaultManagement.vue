@@ -369,7 +369,10 @@ const fetchFaultList = async () => {
       total.value = 0
     }
   } catch (error) {
-    ElMessage.error('获取故障列表失败')
+    ElMessage.error('获取故障列表失败，请重试')
+    if (import.meta.env.DEV) {
+      console.error('Error fetching fault list:', error)
+    }
   } finally {
     loading.value = false
   }
@@ -390,7 +393,10 @@ const fetchAllPiles = async () => {
     })
     stations.value = Array.from(stationMap.values())
   } catch (error) {
-    console.error('获取充电桩列表失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取充电桩列表失败:', error)
+    }
+    ElMessage.error('获取充电桩列表失败，请重试')
   }
 }
 
@@ -439,7 +445,10 @@ const handleSubmitReport = async () => {
       reportDialogVisible.value = false
       fetchFaultList()
     } catch (error) {
-      ElMessage.error('故障上报失败')
+      ElMessage.error('故障上报失败，请重试')
+      if (import.meta.env.DEV) {
+        console.error('Error reporting fault:', error)
+      }
     } finally {
       submitting.value = false
     }
@@ -470,7 +479,10 @@ const handleSubmitAssign = async () => {
     assignDialogVisible.value = false
     fetchFaultList()
   } catch (error) {
-    ElMessage.error('指派失败')
+    ElMessage.error('指派失败，请重试')
+    if (import.meta.env.DEV) {
+      console.error('Error assigning repair:', error)
+    }
   } finally {
     submitting.value = false
   }
@@ -498,9 +510,13 @@ const handleComplete = async (fault) => {
       // 2. 同步更新充电桩状态为空闲（从故障状态恢复）
       try {
         await updatePileStatus(fault.pileId, 1) // 1 = 空闲状态
-        console.log(`充电桩 ${fault.pileNo} 状态已同步更新为空闲`)
+        if (import.meta.env.DEV) {
+          console.log(`充电桩 ${fault.pileNo} 状态已同步更新为空闲`)
+        }
       } catch (pileError) {
-        console.error('更新充电桩状态失败:', pileError)
+        if (import.meta.env.DEV) {
+          console.error('更新充电桩状态失败:', pileError)
+        }
         ElMessage.warning('故障已标记完成，但充电桩状态更新失败，请手动检查')
       }
 
@@ -569,7 +585,9 @@ const initWebSocket = () => {
 
   // 监听 WebSocket 消息
   wsClient.onMessage((message) => {
-    console.log('故障管理收到 WebSocket 消息:', message)
+    if (import.meta.env.DEV) {
+      console.log('故障管理收到 WebSocket 消息:', message)
+    }
 
     // 处理故障告警消息
     if (message.type === 'fault_alert') {

@@ -6,7 +6,13 @@ import com.ev.charging.service.CacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -132,28 +138,23 @@ public class CacheMonitorController {
      */
     @GetMapping("/key/{key}")
     public Result<Map<String, Object>> getKeyDetails(@PathVariable String key) {
-        try {
-            boolean exists = cacheService.exists(key);
-            if (!exists) {
-                return Result.error("缓存key不存在");
-            }
-
-            long ttl = cacheService.getTtl(key);
-            Map<String, String> layerInfo = cacheConfig.getTtl().getLayerInfo(key);
-
-            Map<String, Object> details = new HashMap<>();
-            details.put("key", key);
-            details.put("exists", true);
-            details.put("ttl", ttl);
-            details.put("ttlText", ttl > 0 ? ttl + "秒" : (ttl == -1 ? "永不过期" : "不存在"));
-            details.put("layer", layerInfo.get("layer"));
-            details.put("layerDescription", layerInfo.get("description"));
-
-            return Result.success(details);
-        } catch (Exception e) {
-            log.error("Failed to get key details: key={}", key, e);
-            return Result.error("获取key详情失败");
+        boolean exists = cacheService.exists(key);
+        if (!exists) {
+            return Result.error("缓存key不存在");
         }
+
+        long ttl = cacheService.getTtl(key);
+        Map<String, String> layerInfo = cacheConfig.getTtl().getLayerInfo(key);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("key", key);
+        details.put("exists", true);
+        details.put("ttl", ttl);
+        details.put("ttlText", ttl > 0 ? ttl + "秒" : (ttl == -1 ? "永不过期" : "不存在"));
+        details.put("layer", layerInfo.get("layer"));
+        details.put("layerDescription", layerInfo.get("description"));
+
+        return Result.success(details);
     }
 
     /**
@@ -165,14 +166,9 @@ public class CacheMonitorController {
     @DeleteMapping("/key/{key}")
     @PreAuthorize("hasRole('ADMIN')")
     public Result<Void> deleteKey(@PathVariable String key) {
-        try {
-            cacheService.delete(key);
-            log.info("Cache key deleted by admin: key={}", key);
-            return Result.success();
-        } catch (Exception e) {
-            log.error("Failed to delete cache key: key={}", key, e);
-            return Result.error("删除缓存失败");
-        }
+        cacheService.delete(key);
+        log.info("Cache key deleted by admin: key={}", key);
+        return Result.success();
     }
 
     /**
@@ -224,14 +220,9 @@ public class CacheMonitorController {
             return Result.error("请提供确认参数：confirm=YES");
         }
 
-        try {
-            cacheService.clearAll();
-            log.warn("All cache cleared by admin");
-            return Result.success();
-        } catch (Exception e) {
-            log.error("Failed to clear all cache", e);
-            return Result.error("清空缓存失败");
-        }
+        cacheService.clearAll();
+        log.warn("All cache cleared by admin");
+        return Result.success();
     }
 
     /**

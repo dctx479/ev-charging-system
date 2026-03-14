@@ -96,14 +96,22 @@ const refreshing = ref(false)
 
 // 加载充电站列表
 const onLoad = async () => {
+  loading.value = true
   try {
     const res = await getActiveStations()
     stationList.value = res.data || []
-    loading.value = false
     finished.value = true
   } catch (error) {
-    console.error('加载失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('加载失败:', error)
+    }
     stationList.value = []
+    if (error.response) {
+      showToast(error.response.data?.message || '服务器错误')
+    } else if (error.message?.includes('timeout') || error.message?.includes('Network')) {
+      showToast('网络连接失败，请检查网络')
+    }
+  } finally {
     loading.value = false
   }
 }
@@ -141,10 +149,10 @@ const getNearbyStations = async () => {
     closeToast()
 
     const res = await fetchNearbyStations(position.lat, position.lng, 5)
-    stationList.value = res.data
+    stationList.value = res.data || []
 
     showToast({
-      message: `找到 ${res.data.length} 个附近充电站`,
+      message: `找到 ${stationList.value.length} 个附近充电站`,
       type: 'success'
     })
   } catch (error) {

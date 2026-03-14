@@ -6,8 +6,8 @@ import com.ev.charging.entity.EnergyData;
 import com.ev.charging.repository.ChargingPileRepository;
 import com.ev.charging.repository.ChargingStationRepository;
 import com.ev.charging.repository.EnergyDataRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,16 +18,12 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class EnergyDataSimulator {
 
-    @Autowired
-    private EnergyDataRepository energyDataRepository;
-
-    @Autowired
-    private ChargingStationRepository stationRepository;
-
-    @Autowired
-    private ChargingPileRepository pileRepository;
+    private final EnergyDataRepository energyDataRepository;
+    private final ChargingStationRepository stationRepository;
+    private final ChargingPileRepository pileRepository;
 
     /**
      * 定时生成模拟能源数据(每5分钟一次)

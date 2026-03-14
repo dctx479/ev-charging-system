@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,6 +52,7 @@ public class FaultReportDTO {
      * 故障代码
      */
     @Schema(description = "故障代码（系统自动生成）", example = "ERR_HW_001")
+    @Size(max = 50, message = "故障代码长度不能超过50个字符")
     private String faultCode;
 
     /**
@@ -58,6 +60,7 @@ public class FaultReportDTO {
      */
     @Schema(description = "故障详细描述", example = "充电接口无法连接", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "故障描述不能为空")
+    @Size(max = 1000, message = "故障描述长度不能超过1000个字符")
     private String faultDescription;
 
     /**

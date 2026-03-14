@@ -1,9 +1,10 @@
 package com.ev.charging.service;
 
-import com.ev.charging.dto.CreditRecordVO;
-import com.ev.charging.dto.CreditStatisticsVO;
+import com.ev.charging.vo.CreditRecordVO;
+import com.ev.charging.vo.CreditStatisticsVO;
 import com.ev.charging.entity.CarbonCreditRecord;
 import com.ev.charging.entity.User;
+import com.ev.charging.exception.BusinessException;
 import com.ev.charging.repository.CarbonCreditRecordRepository;
 import com.ev.charging.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -132,7 +133,7 @@ public class CarbonCreditService {
 
         if (Boolean.FALSE.equals(acquired)) {
             log.warn("用户 {} 签到处理中，拒绝重复请求", userId);
-            throw new RuntimeException("签到处理中，请勿重复操作");
+            throw new BusinessException("签到处理中，请勿重复操作");
         }
 
         try {
@@ -145,7 +146,7 @@ public class CarbonCreditService {
 
             if (hasCheckedIn) {
                 log.warn("用户 {} 今天已签到", userId);
-                throw new RuntimeException("今天已签到，请明天再来");
+                throw new BusinessException("今天已签到，请明天再来");
             }
 
             // 基础签到积分
@@ -202,13 +203,13 @@ public class CarbonCreditService {
 
         // 预先获取用户余额（用于计算 balanceAfter，避免@Modifying后JPA缓存陈旧）
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException("用户不存在"));
 
         // 原子性扣减积分（WHERE carbon_credits >= amount，并发安全，避免超扣）
         int rows = userRepository.deductCarbonCreditsAtomically(userId, amount);
         if (rows == 0) {
             log.warn("用户 {} 积分不足，当前余额: {}, 需要: {}", userId, user.getCarbonCredits(), amount);
-            throw new RuntimeException("积分不足");
+            throw new BusinessException("积分不足");
         }
 
         // 重新查询用户获取最新余额（原子更新后JPA一级缓存陈旧）
@@ -236,7 +237,7 @@ public class CarbonCreditService {
      */
     public Integer getCreditBalance(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException("用户不存在"));
         return user.getCarbonCredits();
     }
 
@@ -300,7 +301,7 @@ public class CarbonCreditService {
      */
     public CreditStatisticsVO getCreditStatistics(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                .orElseThrow(() -> new BusinessException("用户不存在"));
 
         // 累计获得和消耗
         Integer totalEarned = creditRecordRepository.sumTotalEarnedCredits(userId);

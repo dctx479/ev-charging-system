@@ -92,7 +92,7 @@
       </van-cell-group>
 
       <!-- 充电桩信息 -->
-      <van-cell-group title="充电桩信息" inset style="margin-top: 16px">
+      <van-cell-group title="充电桩信息" inset class="pile-info-group">
         <van-cell title="站点名称" :value="orderInfo.stationName" />
         <van-cell title="充电桩编号" :value="orderInfo.pileNo" />
         <van-cell title="充电功率" :value="`${orderInfo.pilePower}kW`" />
@@ -100,7 +100,7 @@
       </van-cell-group>
 
       <!-- 实时监控数据 -->
-      <van-cell-group title="实时监控" inset style="margin-top: 16px">
+      <van-cell-group title="实时监控" inset class="monitoring-group">
         <van-cell title="充电电流" :value="`${chargeCurrent.toFixed(1)}A`" />
         <van-cell title="充电电压" :value="`${chargeVoltage.toFixed(1)}V`" />
         <van-cell title="电池温度" :value="`${batteryTemp.toFixed(1)}°C`" />
@@ -273,8 +273,6 @@ const loadOrderInfo = async () => {
         const durationSeconds = Math.floor((now - startTime) / 1000);
         // 确保时长合理（不为负数，且不超过24小时）
         chargeDuration.value = Math.max(0, Math.min(durationSeconds, 86400));
-
-        console.log('充电开始时间(解析后):', startTime.toISOString(), '当前时间:', now.toISOString(), '时长(秒):', chargeDuration.value);
       } else {
         chargeDuration.value = 0
       }
@@ -284,7 +282,9 @@ const loadOrderInfo = async () => {
       chargeCurrent.value = (powerKw * 1000) / 400 // 假设400V电压
     }
   } catch (error) {
-    console.error('加载订单失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('加载订单失败:', error)
+    }
     showToast('加载订单信息失败')
   }
 }
@@ -309,7 +309,9 @@ const startRefresh = () => {
         }
       }
     } catch (error) {
-      console.error('刷新订单失败:', error)
+      if (import.meta.env.DEV) {
+        console.error('刷新订单失败:', error)
+      }
     }
   }, 5000) // 每5秒刷新
 }
@@ -431,7 +433,9 @@ const handleEndCharging = async () => {
     }, 1000)
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('结束充电失败:', error)
+      if (import.meta.env.DEV) {
+        console.error('结束充电失败:', error)
+      }
       showToast(error.message || '结束充电失败')
       ending.value = false
       // 重新开始模拟和刷新
@@ -443,7 +447,12 @@ const handleEndCharging = async () => {
 
 // 格式化时间
 const formatTime = (time) => {
-  return time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '-'
+  if (!time) return '-'
+  try {
+    return dayjs(time).format('YYYY-MM-DD HH:mm:ss')
+  } catch {
+    return '-'
+  }
 }
 
 // 格式化时长(秒转为时分秒)
@@ -618,6 +627,14 @@ const onBack = () => {
       color: #969799;
       margin-top: 8px;
     }
+  }
+
+  .pile-info-group {
+    margin-top: 16px;
+  }
+
+  .monitoring-group {
+    margin-top: 16px;
   }
 }
 </style>

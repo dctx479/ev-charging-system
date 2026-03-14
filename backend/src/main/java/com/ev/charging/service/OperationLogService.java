@@ -1,6 +1,7 @@
 package com.ev.charging.service;
 
 import com.ev.charging.entity.OperationLog;
+import com.ev.charging.exception.BusinessException;
 import com.ev.charging.repository.OperationLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -83,7 +84,7 @@ public class OperationLogService {
      */
     public OperationLog getLogById(Long id) {
         return operationLogRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("操作日志不存在"));
+                .orElseThrow(() -> new BusinessException("操作日志不存在"));
     }
 
     /**
@@ -233,7 +234,7 @@ public class OperationLogService {
         try {
             // 先统计要删除的记录数
             long count = operationLogRepository.findByCreateTimeBetween(
-                    LocalDateTime.of(2000, 1, 1, 0, 0),
+                    LocalDateTime.MIN,
                     beforeTime,
                     Pageable.unpaged()
             ).getTotalElements();
@@ -245,7 +246,7 @@ public class OperationLogService {
             return count;
         } catch (Exception e) {
             log.error("归档操作日志失败", e);
-            throw new RuntimeException("归档操作日志失败: " + e.getMessage());
+            throw new BusinessException("归档操作日志失败: " + e.getMessage());
         }
     }
 

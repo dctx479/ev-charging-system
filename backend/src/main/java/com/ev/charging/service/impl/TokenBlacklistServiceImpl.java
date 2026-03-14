@@ -1,6 +1,7 @@
 package com.ev.charging.service.impl;
 
 import com.ev.charging.service.TokenBlacklistService;
+import com.ev.charging.exception.BusinessException;
 import com.ev.charging.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,7 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             log.info("Token加入黑名单: userId={}, expireIn={}s", userId, expireSeconds);
         } catch (Exception e) {
             log.error("添加token到黑名单失败: token={}", token, e);
-            throw new RuntimeException("添加token到黑名单失败", e);
+            throw new BusinessException("添加token到黑名单失败", e);
         }
     }
 
@@ -88,7 +89,7 @@ public class TokenBlacklistServiceImpl implements TokenBlacklistService {
             log.warn("用户所有token已加入黑名单（强制下线）: userId={}, timestamp={}", userId, timestamp);
         } catch (Exception e) {
             log.error("强制用户下线失败: userId={}", userId, e);
-            throw new RuntimeException("强制用户下线失败", e);
+            throw new BusinessException("强制用户下线失败", e);
         }
     }
 

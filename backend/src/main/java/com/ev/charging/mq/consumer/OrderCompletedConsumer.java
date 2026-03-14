@@ -6,11 +6,11 @@ import com.ev.charging.mq.event.OrderCompletedEvent;
 import com.ev.charging.mq.producer.MessageProducer;
 import com.ev.charging.service.StatisticsService;
 import com.rabbitmq.client.Channel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.messaging.handler.annotation.Header;
@@ -26,16 +26,12 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class OrderCompletedConsumer {
 
-    @Autowired
-    private MessageProducer messageProducer;
-
-    @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @Autowired(required = false)
-    private StatisticsService statisticsService;
+    private final MessageProducer messageProducer;
+    private final StringRedisTemplate redisTemplate;
+    private final StatisticsService statisticsService;
 
     /**
      * 处理订单完成事件
@@ -58,24 +54,10 @@ public class OrderCompletedConsumer {
             // 2. 发送通知
             sendCompletionNotification(event);
 
-            // 3. 更新统计数据（如果统计服务可用）
-            // TODO: 实现 StatisticsService.updateOrderStatistics 方法后启用
-            /*
-            if (statisticsService != null) {
-                try {
-                    statisticsService.updateOrderStatistics(event.getStationId());
-                    log.info("更新统计数据成功: stationId={}", event.getStationId());
-                } catch (Exception e) {
-                    log.error("更新统计数据失败: stationId={}", event.getStationId(), e);
-                    // 统计更新失败不影响主流程
-                }
-            }
-            */
-
-            // 4. 业务处理成功，标记为已处理（防止重复消费）
+            // 3. 业务处理成功，标记为已处理（防止重复消费）
             markProcessed(event.getMessageId());
 
-            // 5. 手动确认
+            // 4. 手动确认
             channel.basicAck(deliveryTag, false);
             log.info("订单完成事件处理成功: orderId={}", event.getOrderId());
 

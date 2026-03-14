@@ -361,7 +361,10 @@ const fetchPileList = async () => {
 
     // 站点列表由 fetchStations() 单独加载
   } catch (error) {
-    ElMessage.error('获取充电桩列表失败')
+    ElMessage.error('获取充电桩列表失败，请重试')
+    if (import.meta.env.DEV) {
+      console.error('Error fetching pile list:', error)
+    }
   } finally {
     loading.value = false
   }
@@ -373,7 +376,9 @@ const fetchStations = async () => {
     const res = await getStationList()
     stations.value = (res.data || []).map(s => ({ id: s.id, name: s.name }))
   } catch (error) {
-    console.error('获取站点列表失败', error)
+    if (import.meta.env.DEV) {
+      console.error('获取站点列表失败', error)
+    }
   }
 }
 
@@ -433,9 +438,14 @@ const handleToggleStatus = async (pile, newStatus) => {
       ElMessage.success(`${statusText}成功`)
       fetchPileList()
     } catch (error) {
-      ElMessage.error(`${statusText}失败`)
+      ElMessage.error(`${statusText}失败，请重试`)
+      if (import.meta.env.DEV) {
+        console.error('Error updating pile status:', error)
+      }
     }
-  }).catch(() => {})
+  }).catch(() => {
+    // User cancelled, do nothing
+  })
 }
 
 // 辅助函数
@@ -541,7 +551,9 @@ const initWebSocket = () => {
 
   // 监听 WebSocket 消息
   wsClient.onMessage((message) => {
-    console.log('充电桩管理收到 WebSocket 消息:', message)
+    if (import.meta.env.DEV) {
+      console.log('充电桩管理收到 WebSocket 消息:', message)
+    }
 
     // 处理充电桩状态更新消息
     if (message.type === 'pile_status_update') {

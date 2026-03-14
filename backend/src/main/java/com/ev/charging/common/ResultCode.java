@@ -39,7 +39,21 @@ public enum ResultCode {
 
     ORDER_NOT_FOUND(3001, "订单不存在"),
     ORDER_CANCELLED(3002, "订单已取消"),
-    INSUFFICIENT_BALANCE(3003, "余额不足");
+    ORDER_ALREADY_PAID(3003, "订单已支付"),
+    INSUFFICIENT_BALANCE(3004, "余额不足"),
+
+    QUEUE_FULL(4001, "排队已满"),
+    QUEUE_EXPIRED(4002, "排队已过期"),
+    QUEUE_NOT_FOUND(4003, "排队记录不存在"),
+    QUEUE_CALL_TIMEOUT(4004, "叫号超时，请重新排队"),
+    USER_ALREADY_QUEUING(4005, "用户已在排队"),
+    USER_ALREADY_CHARGING(4006, "用户已有充电订单进行中"),
+
+    INSUFFICIENT_CREDITS(5001, "积分不足"),
+    CREDIT_PRODUCT_NOT_FOUND(5002, "积分商品不存在"),
+
+    V2G_DISCHARGE_FAILED(6001, "V2G放电失败"),
+    V2G_NOT_ELIGIBLE(6002, "不满足V2G条件");
 
     /**
      * 状态码

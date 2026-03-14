@@ -673,11 +673,12 @@ const debounce = (func, wait) => {
 }
 
 // 窗口大小变化时重绘图表（使用防抖优化）
+let resizeTimeout = null
 const handleResize = debounce(() => {
-  revenueChart?.resize()
-  chargeTrendChart?.resize()
-  userGrowthChart?.resize()
-  faultPieChart?.resize()
+  if (revenueChart && !revenueChart.isDisposed()) revenueChart.resize()
+  if (chargeTrendChart && !chargeTrendChart.isDisposed()) chargeTrendChart.resize()
+  if (userGrowthChart && !userGrowthChart.isDisposed()) userGrowthChart.resize()
+  if (faultPieChart && !faultPieChart.isDisposed()) faultPieChart.resize()
 }, 300)
 
 // 生命周期
@@ -687,23 +688,29 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // Clear resize timeout
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+    resizeTimeout = null
+  }
+
   // 销毁所有ECharts实例并清除引用
-  if (revenueChart) {
+  if (revenueChart && !revenueChart.isDisposed()) {
     revenueChart.dispose()
     revenueChart = null
   }
 
-  if (chargeTrendChart) {
+  if (chargeTrendChart && !chargeTrendChart.isDisposed()) {
     chargeTrendChart.dispose()
     chargeTrendChart = null
   }
 
-  if (userGrowthChart) {
+  if (userGrowthChart && !userGrowthChart.isDisposed()) {
     userGrowthChart.dispose()
     userGrowthChart = null
   }
 
-  if (faultPieChart) {
+  if (faultPieChart && !faultPieChart.isDisposed()) {
     faultPieChart.dispose()
     faultPieChart = null
   }

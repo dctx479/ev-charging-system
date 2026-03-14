@@ -59,7 +59,6 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import CryptoJS from 'crypto-js'
 import { login } from '@/api/auth'
 import { useAdminStore } from '@/store/admin'
 import { resetLoginRedirectTime } from '@/utils/request'
@@ -97,8 +96,7 @@ const handleLogin = async () => {
 
     loading.value = true
     try {
-      const encryptedPassword = CryptoJS.SHA256(formData.password).toString()
-      const res = await login({ ...formData, password: encryptedPassword })
+      const res = await login({ username: formData.username, password: formData.password })
 
       // 从JWT提取exp时间戳，计算expiresIn（秒）
       const token = res.data.token

@@ -1,5 +1,7 @@
 package com.ev.charging.constant;
 
+import java.math.BigDecimal;
+
 /**
  * 订单相关常量
  */
@@ -68,6 +70,63 @@ public class OrderConstants {
      */
     public static final byte PAYMENT_METHOD_BALANCE = 3;
 
+    // ==================== 峰谷平电价 (元/kWh) ====================
+    /**
+     * 谷时电价（23:00-07:00）
+     */
+    public static final BigDecimal PRICE_VALLEY = new BigDecimal("0.40");
+
+    /**
+     * 平时电价（07:00-10:00, 15:00-18:00, 21:00-23:00）
+     */
+    public static final BigDecimal PRICE_FLAT = new BigDecimal("0.80");
+
+    /**
+     * 峰时电价（10:00-15:00, 18:00-21:00）
+     */
+    public static final BigDecimal PRICE_PEAK = new BigDecimal("1.20");
+
+    /**
+     * 服务费费率（元/kWh）
+     */
+    public static final BigDecimal SERVICE_FEE_RATE = new BigDecimal("0.50");
+
+    /**
+     * 充电安全上限（kWh），防止异常数据超过大多数电动车电池容量
+     */
+    public static final BigDecimal MAX_CHARGE_CAPACITY = new BigDecimal("200");
+
+    // ==================== 排队系统相关 ====================
+    /**
+     * 排队状态：排队中
+     */
+    public static final byte QUEUE_STATUS_QUEUING = 1;
+
+    /**
+     * 排队状态：已叫号
+     */
+    public static final byte QUEUE_STATUS_CALLED = 2;
+
+    /**
+     * 排队状态：已取消
+     */
+    public static final byte QUEUE_STATUS_CANCELLED = 3;
+
+    /**
+     * 排队状态：已过号
+     */
+    public static final byte QUEUE_STATUS_EXPIRED = 4;
+
+    /**
+     * 排队系统：最大排队人数
+     */
+    public static final int MAX_QUEUE_SIZE = 20;
+
+    /**
+     * 排队系统：叫号有效期（分钟），用户叫号后需要在规定时间内到达
+     */
+    public static final int QUEUE_CALL_TIMEOUT_MINUTES = 30;
+
     /**
      * 获取订单状态文本
      */
@@ -106,6 +165,20 @@ public class OrderConstants {
             case PAYMENT_METHOD_WECHAT -> "微信支付";
             case PAYMENT_METHOD_ALIPAY -> "支付宝";
             case PAYMENT_METHOD_BALANCE -> "余额支付";
+            default -> "未知";
+        };
+    }
+
+    /**
+     * 获取排队状态文本
+     */
+    public static String getQueueStatusText(Byte status) {
+        if (status == null) return "未知";
+        return switch (status) {
+            case QUEUE_STATUS_QUEUING -> "排队中";
+            case QUEUE_STATUS_CALLED -> "已叫号";
+            case QUEUE_STATUS_CANCELLED -> "已取消";
+            case QUEUE_STATUS_EXPIRED -> "已过号";
             default -> "未知";
         };
     }

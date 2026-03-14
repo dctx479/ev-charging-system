@@ -5,7 +5,6 @@ import com.ev.charging.common.Result;
 import com.ev.charging.dto.DischargeStrategyDTO;
 import com.ev.charging.dto.StartDischargeDTO;
 import com.ev.charging.dto.StopDischargeDTO;
-import com.ev.charging.exception.BusinessException;
 import com.ev.charging.service.ElectricityPriceService;
 import com.ev.charging.service.V2GService;
 import com.ev.charging.vo.ElectricityPriceVO;
@@ -26,7 +25,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
 import java.util.List;
@@ -58,12 +64,8 @@ public class V2GController {
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
             @Parameter(description = "放电启动参数", required = true)
             @RequestBody @Valid StartDischargeDTO dto) {
-        try {
-            V2GRecordVO record = v2gService.startDischarge(userId, dto);
-            return Result.success(record);
-        } catch (BusinessException e) {
-            return Result.error("放电启动失败，请检查充电桩状态");
-        }
+        V2GRecordVO record = v2gService.startDischarge(userId, dto);
+        return Result.success(record);
     }
 
     @Operation(
@@ -82,12 +84,8 @@ public class V2GController {
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
             @Parameter(description = "停止放电参数", required = true)
             @RequestBody @Valid StopDischargeDTO dto) {
-        try {
-            V2GRecordVO record = v2gService.stopDischarge(userId, dto);
-            return Result.success(record);
-        } catch (BusinessException e) {
-            return Result.error("停止放电失败，请稍后重试");
-        }
+        V2GRecordVO record = v2gService.stopDischarge(userId, dto);
+        return Result.success(record);
     }
 
     @Operation(

@@ -6,12 +6,13 @@ import com.ev.charging.mq.event.NotificationMessage;
 import com.ev.charging.mq.event.OrderPaidEvent;
 import com.ev.charging.mq.producer.MessageProducer;
 import com.ev.charging.service.CarbonCreditService;
+import com.ev.charging.exception.BusinessException;
 import com.rabbitmq.client.Channel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.messaging.handler.annotation.Header;
@@ -27,16 +28,12 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class OrderPaidConsumer {
 
-    @Autowired
-    private CarbonCreditService carbonCreditService;
-
-    @Autowired
-    private MessageProducer messageProducer;
-
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    private final CarbonCreditService carbonCreditService;
+    private final MessageProducer messageProducer;
+    private final StringRedisTemplate redisTemplate;
 
     @RabbitListener(queues = RabbitMQConfig.ORDER_PAID_QUEUE)
     public void handleOrderPaid(@Payload OrderPaidEvent event,
@@ -82,7 +79,7 @@ public class OrderPaidConsumer {
                 // 碳积分发放失败：抛出异常触发消息重试机制
                 log.error("碳积分发放失败，将触发重试: orderId={}, userId={}, amount={}, reason={}",
                         event.getOrderId(), event.getUserId(), event.getChargeAmount(), e.getMessage());
-                throw new RuntimeException("碳积分发放失败，需要重试", e);
+                throw new BusinessException("碳积分发放失败，需要重试", e);
             }
 
             // 2. 发送支付成功通知

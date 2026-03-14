@@ -9,11 +9,15 @@ import com.ev.charging.repository.EnergyDataRepository;
 import com.ev.charging.vo.EnergyDataVO;
 import com.ev.charging.vo.EnergyRealtimeVO;
 import com.ev.charging.vo.EnergyStatisticsVO;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,18 +27,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-
 @Tag(name = "能源监控", description = "能源数据实时监控、历史查询、统计分析")
 @RestController
 @RequestMapping("/energy")
+@RequiredArgsConstructor
 public class EnergyController {
 
-    @Autowired
-    private EnergyDataRepository energyDataRepository;
-
-    @Autowired
-    private ChargingStationRepository stationRepository;
+    private final EnergyDataRepository energyDataRepository;
+    private final ChargingStationRepository stationRepository;
 
     @GetMapping("/realtime")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'OPERATOR')")

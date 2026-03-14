@@ -150,7 +150,9 @@ const loadChatHistory = async () => {
       scrollToBottom()
     }
   } catch (error) {
-    console.error('加载聊天记录失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('加载聊天记录失败:', error)
+    }
   }
 }
 
@@ -162,7 +164,9 @@ const loadOnlineUsers = async () => {
       onlineUsers.value = res.data || []
     }
   } catch (error) {
-    console.error('加载在线用户失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('加载在线用户失败:', error)
+    }
   }
 }
 
@@ -189,20 +193,28 @@ const connectWebSocket = () => {
 
   // 构建WebSocket URL，通过query参数传递token和stationId
   // 后端从query参数提取token进行JWT验证
+  // 注意: token通过URL query传递会记录在服务器日志和浏览器历史中
+  // 生产环境建议改用WebSocket子协议(Sec-WebSocket-Protocol)传递token
   const wsUrl = `${protocol}//${host}/ws/chat?stationId=${stationId.value}&token=${encodeURIComponent(token)}`
 
-  console.log('正在连接WebSocket:', wsUrl.replace(/token=.*/, 'token=***'))
+  if (import.meta.env.DEV) {
+    console.log('正在连接WebSocket:', wsUrl.replace(/token=.*/, 'token=***'))
+  }
 
   try {
     ws = new WebSocket(wsUrl)
   } catch (error) {
-    console.error('创建WebSocket连接失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('创建WebSocket连接失败:', error)
+    }
     showToast('连接失败，请检查网络')
     return
   }
 
   ws.onopen = () => {
-    console.log('WebSocket连接成功')
+    if (import.meta.env.DEV) {
+      console.log('WebSocket连接成功')
+    }
     reconnectAttempts = 0 // 重置重连次数
     showToast('连接成功')
   }
@@ -236,22 +248,30 @@ const connectWebSocket = () => {
         loadOnlineUsers()
       }
     } catch (error) {
-      console.error('处理WebSocket消息失败:', error, event.data)
+      if (import.meta.env.DEV) {
+        console.error('处理WebSocket消息失败:', error, event.data)
+      }
     }
   }
 
   ws.onerror = (error) => {
-    console.error('WebSocket错误:', error)
+    if (import.meta.env.DEV) {
+      console.error('WebSocket错误:', error)
+    }
     const errorMsg = error.message || '连接出错，正在重试'
     showToast(errorMsg)
   }
 
   ws.onclose = (event) => {
-    console.log(`WebSocket连接关闭: code=${event.code}, reason=${event.reason}`)
+    if (import.meta.env.DEV) {
+      console.log(`WebSocket连接关闭: code=${event.code}, reason=${event.reason}`)
+    }
 
     // 检查是否达到最大重连次数
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log('已达到最大重连次数，停止重连')
+      if (import.meta.env.DEV) {
+        console.log('已达到最大重连次数，停止重连')
+      }
       showToast('连接失败次数过多，请刷新页面重试')
       return
     }
@@ -260,7 +280,9 @@ const connectWebSocket = () => {
     const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts)
     reconnectAttempts++
 
-    console.log(`将在 ${delay}ms 后进行第 ${reconnectAttempts} 次重连`)
+    if (import.meta.env.DEV) {
+      console.log(`将在 ${delay}ms 后进行第 ${reconnectAttempts} 次重连`)
+    }
     reconnectTimer = setTimeout(() => {
       if (!ws || ws.readyState === WebSocket.CLOSED) {
         connectWebSocket()

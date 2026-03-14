@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -44,6 +45,7 @@ public class AdminOrderQueryDTO {
      * 搜索关键词（用户手机号或订单号）
      */
     @Schema(description = "搜索关键词（用户手机号或订单号）", example = "13800138000")
+    @Size(max = 50, message = "搜索关键词长度不能超过50个字符")
     private String keyword;
 
     /**

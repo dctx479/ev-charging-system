@@ -12,7 +12,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -56,14 +60,8 @@ public class NearbyServiceController {
             @Parameter(description = "预估等待时间（分钟）", required = true, example = "30")
             @RequestParam Integer waitTime) {
         log.info("获取周边服务推荐: stationId={}, waitTime={}分钟", stationId, waitTime);
-
-        try {
-            List<NearbyServiceVO> services = nearbyServiceService.getRecommendedServices(stationId, waitTime);
-            return Result.success("推荐成功", services);
-        } catch (Exception e) {
-            log.error("获取周边服务推荐失败", e);
-            return Result.error("获取推荐失败，请稍后重试");
-        }
+        List<NearbyServiceVO> services = nearbyServiceService.getRecommendedServices(stationId, waitTime);
+        return Result.success("推荐成功", services);
     }
 
     /**
@@ -87,14 +85,8 @@ public class NearbyServiceController {
             @Parameter(description = "充电站ID", required = true, example = "1")
             @PathVariable Long stationId) {
         log.info("获取站点周边服务: stationId={}", stationId);
-
-        try {
-            List<NearbyServiceVO> services = nearbyServiceService.getAllServices(stationId);
-            return Result.success(services);
-        } catch (Exception e) {
-            log.error("获取站点周边服务失败", e);
-            return Result.error("获取周边服务失败，请稍后重试");
-        }
+        List<NearbyServiceVO> services = nearbyServiceService.getAllServices(stationId);
+        return Result.success(services);
     }
 
     /**
@@ -122,14 +114,8 @@ public class NearbyServiceController {
             @Parameter(description = "服务类型：1-餐饮 2-咖啡厅 3-购物 4-娱乐 5-其他", required = true, example = "1")
             @PathVariable Byte serviceType) {
         log.info("获取站点周边服务: stationId={}, serviceType={}", stationId, serviceType);
-
-        try {
-            List<NearbyServiceVO> services = nearbyServiceService.getServicesByType(stationId, serviceType);
-            return Result.success(services);
-        } catch (Exception e) {
-            log.error("获取站点周边服务失败", e);
-            return Result.error("获取周边服务失败，请稍后重试");
-        }
+        List<NearbyServiceVO> services = nearbyServiceService.getServicesByType(stationId, serviceType);
+        return Result.success(services);
     }
 
     /**
@@ -156,14 +142,8 @@ public class NearbyServiceController {
             @Parameter(description = "最大距离（米）", example = "1000")
             @RequestParam(defaultValue = "1000") Integer maxDistance) {
         log.info("获取站点周边服务: stationId={}, maxDistance={}米", stationId, maxDistance);
-
-        try {
-            List<NearbyServiceVO> services = nearbyServiceService.getServicesByDistance(stationId, maxDistance);
-            return Result.success(services);
-        } catch (Exception e) {
-            log.error("获取站点周边服务失败", e);
-            return Result.error("获取周边服务失败，请稍后重试");
-        }
+        List<NearbyServiceVO> services = nearbyServiceService.getServicesByDistance(stationId, maxDistance);
+        return Result.success(services);
     }
 
     // ==================== 高德地图POI搜索 ====================

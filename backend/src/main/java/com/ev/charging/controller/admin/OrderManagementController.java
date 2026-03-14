@@ -9,8 +9,8 @@ import com.ev.charging.vo.AdminOrderListVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -18,7 +18,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -31,11 +39,11 @@ import java.time.format.DateTimeFormatter;
 @RestController
 @RequestMapping(value = "/admin/orders", produces = "application/json;charset=UTF-8")
 @Tag(name = "管理后台 - 订单管理", description = "订单查询、状态管理、退款、导出等功能")
+@RequiredArgsConstructor
 @Slf4j
 public class OrderManagementController {
 
-    @Autowired
-    private AdminOrderService adminOrderService;
+    private final AdminOrderService adminOrderService;
 
     private static final DateTimeFormatter FILE_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
@@ -55,34 +63,33 @@ public class OrderManagementController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size
     ) {
-        try {
-            AdminOrderQueryDTO queryDTO = new AdminOrderQueryDTO();
-            queryDTO.setOrderStatus(orderStatus);
-            queryDTO.setPaymentStatus(paymentStatus);
-            queryDTO.setStationId(stationId);
-            queryDTO.setPileId(pileId);
-            queryDTO.setKeyword(keyword);
-            queryDTO.setPage(page);
-            queryDTO.setSize(size);
+        AdminOrderQueryDTO queryDTO = new AdminOrderQueryDTO();
+        queryDTO.setOrderStatus(orderStatus);
+        queryDTO.setPaymentStatus(paymentStatus);
+        queryDTO.setStationId(stationId);
+        queryDTO.setPileId(pileId);
+        queryDTO.setKeyword(keyword);
+        queryDTO.setPage(page);
+        queryDTO.setSize(size);
 
-            // 解析时间范围
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        // 解析时间范围
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        try {
             if (startTime != null && !startTime.isEmpty()) {
                 queryDTO.setStartTime(LocalDateTime.parse(startTime, formatter));
             }
             if (endTime != null && !endTime.isEmpty()) {
                 queryDTO.setEndTime(LocalDateTime.parse(endTime, formatter));
             }
-
-            Page<AdminOrderListVO> result = adminOrderService.getOrderList(queryDTO);
-
-            log.info("查询订单列表: page={}, size={}, total={}", page, size, result.getTotalElements());
-
-            return Result.success(result);
-        } catch (Exception e) {
-            log.error("查询订单列表失败", e);
-            return Result.error("查询订单列表失败，请稍后重试");
+        } catch (java.time.format.DateTimeParseException e) {
+            return Result.error("时间格式错误，请使用 yyyy-MM-dd HH:mm:ss 格式");
         }
+
+        Page<AdminOrderListVO> result = adminOrderService.getOrderList(queryDTO);
+
+        log.info("查询订单列表: page={}, size={}, total={}", page, size, result.getTotalElements());
+
+        return Result.success(result);
     }
 
     /**
@@ -91,13 +98,8 @@ public class OrderManagementController {
     @GetMapping("/detail/{id}")
     @Operation(summary = "获取订单详情", description = "根据订单ID获取订单完整信息")
     public Result<AdminOrderListVO> getOrderDetail(@PathVariable Long id) {
-        try {
-            AdminOrderListVO order = adminOrderService.getOrderDetail(id);
-            return Result.success(order);
-        } catch (Exception e) {
-            log.error("获取订单详情失败: orderId={}", id, e);
-            return Result.error("获取订单详情失败，请稍后重试");
-        }
+        AdminOrderListVO order = adminOrderService.getOrderDetail(id);
+        return Result.success(order);
     }
 
     /**
@@ -106,21 +108,16 @@ public class OrderManagementController {
     @GetMapping("/statistics")
     @Operation(summary = "获取订单统计", description = "获取订单各状态数量统计")
     public Result<Object> getOrderStatistics() {
-        try {
-            // 简单统计各状态订单数量
-            java.util.Map<String, Object> stats = new java.util.HashMap<>();
-            stats.put("total", adminOrderService.countAll());
-            stats.put("pending", adminOrderService.countByStatus((byte) 1));
-            stats.put("charging", adminOrderService.countByStatus((byte) 2));
-            stats.put("completed", adminOrderService.countByStatus((byte) 3));
-            stats.put("cancelled", adminOrderService.countByStatus((byte) 4));
-            stats.put("paid", adminOrderService.countByPaymentStatus((byte) 1));
-            stats.put("unpaid", adminOrderService.countByPaymentStatus((byte) 0));
-            return Result.success(stats);
-        } catch (Exception e) {
-            log.error("获取订单统计失败", e);
-            return Result.error("获取订单统计失败，请稍后重试");
-        }
+        // 简单统计各状态订单数量
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("total", adminOrderService.countAll());
+        stats.put("pending", adminOrderService.countByStatus((byte) 1));
+        stats.put("charging", adminOrderService.countByStatus((byte) 2));
+        stats.put("completed", adminOrderService.countByStatus((byte) 3));
+        stats.put("cancelled", adminOrderService.countByStatus((byte) 4));
+        stats.put("paid", adminOrderService.countByPaymentStatus((byte) 1));
+        stats.put("unpaid", adminOrderService.countByPaymentStatus((byte) 0));
+        return Result.success(stats);
     }
 
     /**
@@ -133,21 +130,16 @@ public class OrderManagementController {
             @PathVariable Long id,
             @RequestParam Byte status
     ) {
-        try {
-            // 验证状态值（OrderConstants: 1=待支付, 2=充电中, 3=已完成, 4=已取消, 5=异常）
-            if (status < 1 || status > 5) {
-                return Result.error("无效的订单状态");
-            }
-
-            adminOrderService.updateOrderStatus(id, status);
-
-            log.info("更新订单状态成功: orderId={}, newStatus={}", id, status);
-
-            return Result.success();
-        } catch (Exception e) {
-            log.error("更新订单状态失败: orderId={}", id, e);
-            return Result.error("更新订单状态失败，请稍后重试");
+        // 验证状态值（OrderConstants: 1=待支付, 2=充电中, 3=已完成, 4=已取消, 5=异常）
+        if (status < 1 || status > 5) {
+            return Result.error("无效的订单状态");
         }
+
+        adminOrderService.updateOrderStatus(id, status);
+
+        log.info("更新订单状态成功: orderId={}, newStatus={}", id, status);
+
+        return Result.success();
     }
 
     /**
@@ -160,16 +152,11 @@ public class OrderManagementController {
             @PathVariable Long id,
             @RequestBody @Valid RefundDTO refundDTO
     ) {
-        try {
-            adminOrderService.refundOrder(id, refundDTO);
+        adminOrderService.refundOrder(id, refundDTO);
 
-            log.info("订单退款成功: orderId={}, reason={}", id, refundDTO.getRefundReason());
+        log.info("订单退款成功: orderId={}, reason={}", id, refundDTO.getRefundReason());
 
-            return Result.success();
-        } catch (Exception e) {
-            log.error("订单退款失败: orderId={}", id, e);
-            return Result.error("退款失败，请稍后重试");
-        }
+        return Result.success();
     }
 
     /**
@@ -196,11 +183,15 @@ public class OrderManagementController {
 
             // 解析时间范围
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            if (startTime != null && !startTime.isEmpty()) {
-                queryDTO.setStartTime(LocalDateTime.parse(startTime, formatter));
-            }
-            if (endTime != null && !endTime.isEmpty()) {
-                queryDTO.setEndTime(LocalDateTime.parse(endTime, formatter));
+            try {
+                if (startTime != null && !startTime.isEmpty()) {
+                    queryDTO.setStartTime(LocalDateTime.parse(startTime, formatter));
+                }
+                if (endTime != null && !endTime.isEmpty()) {
+                    queryDTO.setEndTime(LocalDateTime.parse(endTime, formatter));
+                }
+            } catch (java.time.format.DateTimeParseException e) {
+                return ResponseEntity.badRequest().build();
             }
 
             byte[] excelData = adminOrderService.exportOrders(queryDTO);
@@ -221,9 +212,6 @@ public class OrderManagementController {
 
             return new ResponseEntity<>(excelData, headers, HttpStatus.OK);
         } catch (IOException e) {
-            log.error("导出订单Excel失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        } catch (Exception e) {
             log.error("导出订单Excel失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

@@ -23,7 +23,7 @@
       <van-cell-group inset>
         <van-cell :title="station.name" :label="station.address">
           <template #icon>
-            <van-icon name="shop-o" size="20" style="margin-right: 10px;" />
+            <van-icon name="shop-o" size="20" class="icon-spacing" />
           </template>
         </van-cell>
 
@@ -39,7 +39,7 @@
         <van-cell title="评分">
           <template #value>
             <van-rate v-model="station.rating" :size="16" readonly />
-            <span style="margin-left: 5px;">{{ station.rating }}</span>
+            <span class="rating-spacing">{{ station.rating }}</span>
           </template>
         </van-cell>
 
@@ -96,7 +96,7 @@
               :name="queueInfo.recommendQueue ? 'success' : 'warning-o'"
               :color="queueInfo.recommendQueue ? '#07c160' : '#ff976a'"
               size="18"
-              style="margin-right: 8px;"
+              class="suggestion-icon"
             />
           </template>
         </van-cell>
@@ -274,7 +274,9 @@ const loadStationDetail = async () => {
     // 加载排队信息
     await loadQueueInfo()
   } catch (error) {
-    console.error('加载失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('加载失败:', error)
+    }
   } finally {
     loading.value = false
   }
@@ -285,7 +287,9 @@ const loadQueueInfo = async () => {
     const res = await getStationQueueInfo(route.params.id)
     queueInfo.value = res.data
   } catch (error) {
-    console.error('加载排队信息失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('加载排队信息失败:', error)
+    }
   }
 }
 
@@ -295,7 +299,9 @@ const loadQueueInfo = async () => {
  */
 const initStationMap = () => {
   if (!station.value || !station.value.longitude || !station.value.latitude) {
-    console.warn('站点坐标信息不完整，无法初始化地图')
+    if (import.meta.env.DEV) {
+      console.warn('站点坐标信息不完整，无法初始化地图')
+    }
     return
   }
 
@@ -306,7 +312,9 @@ const initStationMap = () => {
   })
 
   if (!mapInstance.value) {
-    console.error('地图初始化失败')
+    if (import.meta.env.DEV) {
+      console.error('地图初始化失败')
+    }
     return
   }
 
@@ -354,7 +362,9 @@ const loadUserPosition = async () => {
       distanceToStation.value = formatDistance(distance)
     }
   } catch (error) {
-    console.error('获取位置失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取位置失败:', error)
+    }
     // 位置获取失败不影响其他功能
   }
 }
@@ -363,9 +373,6 @@ const loadUserPosition = async () => {
  * 点击导航按钮 - 打开导航方式选择面板
  */
 const handleNavigation = async () => {
-  console.log('handleNavigation called')
-  console.log('Station:', station.value)
-
   if (!station.value || !station.value.longitude || !station.value.latitude) {
     showToast('站点坐标信息不完整')
     return
@@ -396,7 +403,9 @@ const handleNavigation = async () => {
       closeToast()
       showSuccessToast('位置获取成功')
     } catch (error) {
-      console.error('获取位置失败:', error)
+      if (import.meta.env.DEV) {
+        console.error('获取位置失败:', error)
+      }
       closeToast()
       showToast('获取位置失败，将使用地图自动定位')
       // 位置获取失败不阻止导航，继续打开导航面板
@@ -406,7 +415,6 @@ const handleNavigation = async () => {
   }
 
   // 打开导航方式选择面板
-  console.log('Opening nav sheet')
   showNavSheet.value = true
 }
 
@@ -594,6 +602,18 @@ onBeforeUnmount(() => {
   right: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 10;
+}
+
+.icon-spacing {
+  margin-right: 10px;
+}
+
+.rating-spacing {
+  margin-left: 5px;
+}
+
+.suggestion-icon {
+  margin-right: 8px;
 }
 
 .action-buttons {

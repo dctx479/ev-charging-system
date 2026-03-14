@@ -155,7 +155,7 @@ public class NearbyServiceService {
      * @return 推荐理由
      */
     private String generateRecommendReason(NearbyService service, Integer waitTime) {
-        int consumeTime = service.getAvgConsumeTime();
+        int consumeTime = service.getAvgConsumeTime() != null ? service.getAvgConsumeTime() : 0;
         String serviceTypeName = NearbyServiceVO.getServiceTypeText(service.getServiceType());
 
         if (consumeTime <= 20) {

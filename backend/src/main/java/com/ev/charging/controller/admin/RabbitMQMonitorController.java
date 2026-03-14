@@ -7,12 +7,17 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.core.QueueInformation;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,61 +29,51 @@ import java.util.Properties;
 @RestController
 @RequestMapping("/admin/mq")
 @Tag(name = "RabbitMQ监控", description = "消息队列监控和管理接口")
+@RequiredArgsConstructor
 @Slf4j
 public class RabbitMQMonitorController {
 
-    @Autowired
-    private AmqpAdmin amqpAdmin;
+    private final AmqpAdmin amqpAdmin;
 
     @GetMapping("/stats")
     @Operation(summary = "获取队列统计信息")
     public Result<List<QueueStats>> getQueueStats() {
-        try {
-            List<QueueStats> statsList = new ArrayList<>();
-            
-            String[] queues = {
-                "order.completed",
-                "order.paid",
-                "credit.change",
-                "notification",
-                "dlx.queue"
-            };
-            
-            for (String queueName : queues) {
-                try {
-                    QueueInformation info = amqpAdmin.getQueueInfo(queueName);
-                    if (info != null) {
-                        QueueStats stats = QueueStats.builder()
-                                .queueName(queueName)
-                                .messageCount(info.getMessageCount())
-                                .consumerCount(info.getConsumerCount())
-                                .build();
-                        statsList.add(stats);
-                    }
-                } catch (Exception e) {
-                    log.warn("获取队列信息失败: {}", queueName, e);
+        List<QueueStats> statsList = new ArrayList<>();
+
+        String[] queues = {
+            "order.completed",
+            "order.paid",
+            "credit.change",
+            "notification",
+            "dlx.queue"
+        };
+
+        for (String queueName : queues) {
+            try {
+                QueueInformation info = amqpAdmin.getQueueInfo(queueName);
+                if (info != null) {
+                    QueueStats stats = QueueStats.builder()
+                            .queueName(queueName)
+                            .messageCount(info.getMessageCount())
+                            .consumerCount(info.getConsumerCount())
+                            .build();
+                    statsList.add(stats);
                 }
+            } catch (Exception e) {
+                log.warn("获取队列信息失败: {}", queueName, e);
             }
-            
-            return Result.success(statsList);
-        } catch (Exception e) {
-            log.error("获取队列统计失败", e);
-            return Result.error("获取队列统计失败，请稍后重试");
         }
+
+        return Result.success(statsList);
     }
 
     @PostMapping("/purge/{queueName}")
     @Operation(summary = "清空队列")
     @PreAuthorize("hasRole('ADMIN')")
     public Result<Void> purgeQueue(@PathVariable String queueName) {
-        try {
-            amqpAdmin.purgeQueue(queueName);
-            log.info("队列已清空: {}", queueName);
-            return Result.success(null);
-        } catch (Exception e) {
-            log.error("清空队列失败: {}", queueName, e);
-            return Result.error("清空队列失败，请稍后重试");
-        }
+        amqpAdmin.purgeQueue(queueName);
+        log.info("队列已清空: {}", queueName);
+        return Result.success(null);
     }
 
     @Data

@@ -1,6 +1,11 @@
 package com.ev.charging.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,6 +13,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -71,8 +77,8 @@ public class CreditProduct {
     /**
      * 商品价值（元）
      */
-    @Column(name = "original_price")
-    private Double originalPrice;
+    @Column(name = "original_price", precision = 8, scale = 2)
+    private BigDecimal originalPrice;
 
     /**
      * 状态: 1-上架, 0-下架

@@ -4,11 +4,11 @@
 global:
   resolve_timeout: 5m  # 告警自动解决超时时间
 
-  # SMTP 配置（邮件告警）
-  smtp_from: 'alertmanager@ev-charging.com'
-  smtp_smarthost: 'smtp.example.com:587'
-  smtp_auth_username: 'alertmanager@ev-charging.com'
-  smtp_auth_password: 'your-password-here'
+  # SMTP 配置（邮件告警）- 生产环境需配置实际SMTP服务器
+  smtp_from: '${SMTP_FROM:alertmanager@ev-charging.com}'
+  smtp_smarthost: '${SMTP_HOST:smtp.example.com:587}'
+  smtp_auth_username: '${SMTP_USER:alertmanager@ev-charging.com}'
+  smtp_auth_password: '${SMTP_PASSWORD:}'
   smtp_require_tls: true
 
 # 路由配置
@@ -127,20 +127,14 @@ receivers:
           </div>
           {{ end }}
 
-    # 钉钉机器人通知
+    # 钉钉机器人通知（需配置实际access_token）
     webhook_configs:
-      - url: 'https://oapi.dingtalk.com/robot/send?access_token=YOUR_DINGTALK_TOKEN_HERE'
+      - url: '${DINGTALK_CRITICAL_WEBHOOK:http://host.docker.internal:8080/api/webhook/alert/dingtalk}'
         send_resolved: true
-        http_config:
-          tls_config:
-            insecure_skip_verify: true
 
-      # 企业微信机器人通知
-      - url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_WECHAT_KEY_HERE'
+      # 企业微信机器人通知（需配置实际key）
+      - url: '${WECHAT_CRITICAL_WEBHOOK:http://host.docker.internal:8080/api/webhook/alert/wechat}'
         send_resolved: true
-        http_config:
-          tls_config:
-            insecure_skip_verify: true
 
       # 自定义 Webhook
       - url: 'http://host.docker.internal:8080/api/webhook/alert/critical'
@@ -154,7 +148,7 @@ receivers:
           Subject: '[WARNING] 充电系统警告告警'
 
     webhook_configs:
-      - url: 'https://oapi.dingtalk.com/robot/send?access_token=YOUR_DINGTALK_TOKEN_HERE'
+      - url: '${DINGTALK_WARNING_WEBHOOK:http://host.docker.internal:8080/api/webhook/alert/dingtalk}'
         send_resolved: true
 
       - url: 'http://host.docker.internal:8080/api/webhook/alert/warning'
@@ -174,7 +168,7 @@ receivers:
           Subject: '[BUSINESS] 充电系统业务告警'
 
     webhook_configs:
-      - url: 'https://oapi.dingtalk.com/robot/send?access_token=YOUR_BUSINESS_DINGTALK_TOKEN_HERE'
+      - url: '${DINGTALK_BUSINESS_WEBHOOK:http://host.docker.internal:8080/api/webhook/alert/dingtalk}'
         send_resolved: true
 
       - url: 'http://host.docker.internal:8080/api/webhook/alert/business'

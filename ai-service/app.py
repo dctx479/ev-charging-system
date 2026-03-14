@@ -1,11 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from functools import wraps
+import hmac
 import joblib
 import numpy as np
 import os
 import logging
 import time
+import threading
+import math
 from collections import defaultdict
 
 # 配置日志
@@ -20,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# 安全修复: 限制请求体大小（1MB）
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024
+
 # 安全修复: 限制CORS来源
 allowed_origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:5174,http://localhost:8080').split(',')
 CORS(app, origins=allowed_origins)
@@ -33,8 +39,11 @@ RATE_LIMIT_ENABLED = os.getenv('RATE_LIMIT_ENABLED', 'true').lower() == 'true'
 RATE_LIMIT_REQUESTS = int(os.getenv('RATE_LIMIT_REQUESTS', '100'))  # 每分钟请求数
 RATE_LIMIT_WINDOW = int(os.getenv('RATE_LIMIT_WINDOW', '60'))  # 时间窗口（秒）
 
-# 简单的内存限流器
+# 简单的内存限流器（线程安全）
 rate_limit_store = defaultdict(list)
+_rate_limit_lock = threading.Lock()
+_last_cleanup_time = 0
+_CLEANUP_INTERVAL = 300  # 每5分钟清理一次过期IP
 
 def get_client_ip():
     """获取客户端IP"""
@@ -42,26 +51,44 @@ def get_client_ip():
         return request.headers.get('X-Forwarded-For').split(',')[0].strip()
     return request.remote_addr or 'unknown'
 
+def _cleanup_stale_ips():
+    """清理长时间无请求的IP条目，防止内存泄漏"""
+    global _last_cleanup_time
+    current_time = time.time()
+    if current_time - _last_cleanup_time < _CLEANUP_INTERVAL:
+        return
+    _last_cleanup_time = current_time
+    stale_ips = [
+        ip for ip, timestamps in rate_limit_store.items()
+        if not timestamps or current_time - max(timestamps) >= RATE_LIMIT_WINDOW
+    ]
+    for ip in stale_ips:
+        del rate_limit_store[ip]
+
 def rate_limit_check():
-    """检查是否超过限流"""
+    """检查是否超过限流（线程安全）"""
     if not RATE_LIMIT_ENABLED:
         return True
 
     client_ip = get_client_ip()
     current_time = time.time()
 
-    # 清理过期记录
-    rate_limit_store[client_ip] = [
-        t for t in rate_limit_store[client_ip]
-        if current_time - t < RATE_LIMIT_WINDOW
-    ]
+    with _rate_limit_lock:
+        # 定期清理过期IP条目
+        _cleanup_stale_ips()
 
-    # 检查请求数
-    if len(rate_limit_store[client_ip]) >= RATE_LIMIT_REQUESTS:
-        return False
+        # 清理当前IP的过期记录
+        rate_limit_store[client_ip] = [
+            t for t in rate_limit_store[client_ip]
+            if current_time - t < RATE_LIMIT_WINDOW
+        ]
 
-    rate_limit_store[client_ip].append(current_time)
-    return True
+        # 检查请求数
+        if len(rate_limit_store[client_ip]) >= RATE_LIMIT_REQUESTS:
+            return False
+
+        rate_limit_store[client_ip].append(current_time)
+        return True
 
 def require_api_key(f):
     """API密钥验证装饰器"""
@@ -69,7 +96,7 @@ def require_api_key(f):
     def decorated_function(*args, **kwargs):
         if API_KEY_ENABLED:
             provided_key = request.headers.get('X-API-Key')
-            if not provided_key or provided_key != API_KEY:
+            if not provided_key or not hmac.compare_digest(provided_key, API_KEY):
                 logger.warning(f'未授权的API访问尝试: IP={get_client_ip()}')
                 return jsonify({
                     'code': 401,
@@ -202,6 +229,15 @@ def predict_duration():
         charge_power = float(data['charge_power'])
         temperature = float(data.get('temperature', 25))
 
+        # 验证数值有效性（防止NaN/Inf输入）
+        values = [battery_capacity, current_soc, target_soc, charge_power, temperature]
+        if any(math.isnan(v) or math.isinf(v) for v in values):
+            return jsonify({
+                'code': 400,
+                'message': '参数包含无效数值（NaN或Infinity）',
+                'data': None
+            }), 400
+
         # 参数验证
         if battery_capacity <= 0 or battery_capacity > 200:
             return jsonify({
@@ -264,7 +300,9 @@ def predict_duration():
 
         # 计算费用（简化的峰谷平电价）
         charge_amount = battery_capacity * (target_soc - current_soc) / 100
-        estimated_cost = round(charge_amount * 0.8, 2)  # 假设平均电价0.8元/kWh
+        # 使用加权平均电价: 谷0.4(8h) + 平0.8(9h) + 峰1.2(7h) ≈ 0.78元/kWh, 取0.8作为简化估算
+        avg_price_per_kwh = 0.8
+        estimated_cost = round(charge_amount * avg_price_per_kwh, 2)
 
         logger.info(f'充电时长预测: battery={battery_capacity}kWh, power={charge_power}kW, duration={duration_minutes}min')
 
@@ -335,6 +373,22 @@ def predict_fault():
 
         # 参数范围验证
         health_score = float(data['health_score'])
+        days_since_last_maintenance = float(data['days_since_last_maintenance'])
+
+        # 验证数值有效性（防止NaN/Inf输入）
+        all_values = [
+            float(data['total_charge_count']), float(data['total_charge_amount']),
+            days_since_last_maintenance, health_score,
+            float(data['avg_daily_usage']), float(data['voltage_fluctuation']),
+            float(data['fault_history_count'])
+        ]
+        if any(math.isnan(v) or math.isinf(v) for v in all_values):
+            return jsonify({
+                'code': 400,
+                'message': '参数包含无效数值（NaN或Infinity）',
+                'data': None
+            }), 400
+
         if not (0 <= health_score <= 100):
             return jsonify({
                 'code': 400,
@@ -342,7 +396,6 @@ def predict_fault():
                 'data': None
             }), 400
 
-        days_since_last_maintenance = float(data['days_since_last_maintenance'])
         if days_since_last_maintenance < 0:
             return jsonify({
                 'code': 400,

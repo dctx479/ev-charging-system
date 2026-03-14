@@ -2,12 +2,13 @@ package com.ev.charging.mq.consumer;
 
 import com.ev.charging.config.RabbitMQConfig;
 import com.ev.charging.mq.event.CreditChangeEvent;
+import com.ev.charging.service.CarbonCreditService;
 import com.rabbitmq.client.Channel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.messaging.handler.annotation.Header;
@@ -29,13 +30,11 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class CreditChangeEventConsumer {
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @Autowired
-    private com.ev.charging.service.CarbonCreditService carbonCreditService;
+    private final StringRedisTemplate redisTemplate;
+    private final CarbonCreditService carbonCreditService;
 
     @RabbitListener(queues = RabbitMQConfig.CREDIT_CHANGE_QUEUE)
     public void handleCreditChangeEvent(@Payload CreditChangeEvent event,

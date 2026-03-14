@@ -8,7 +8,9 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       return jsonString ? JSON.parse(jsonString) : defaultValue
     } catch (error) {
-      console.error('JSON解析失败:', error)
+      if (import.meta.env.DEV) {
+        console.error('JSON解析失败:', error)
+      }
       return defaultValue
     }
   }
@@ -82,7 +84,9 @@ export const useAdminStore = defineStore('admin', () => {
         return decoded.exp > now + BUFFER_SECONDS
       }
     } catch (error) {
-      console.error('Token解析失败:', error)
+      if (import.meta.env.DEV) {
+        console.error('Token解析失败:', error)
+      }
     }
 
     // 如果没有过期时间记录，认为token无效（安全性考虑）

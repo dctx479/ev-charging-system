@@ -510,7 +510,7 @@ CREATE TABLE `credit_product` (
     `points_required` INT NOT NULL COMMENT '所需积分',
     `stock` INT NOT NULL COMMENT '库存数量',
     `exchanged_count` INT DEFAULT 0 COMMENT '已兑换数量',
-    `original_price` DOUBLE DEFAULT NULL COMMENT '商品价值（元）',
+    `original_price` DECIMAL(8,2) DEFAULT NULL COMMENT '商品价值（元）',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1上架 0下架',
     `limit_per_user` INT DEFAULT 0 COMMENT '每人限兑数量，0表示不限',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

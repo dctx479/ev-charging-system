@@ -217,7 +217,7 @@ const validateForm = () => {
   }
 
   // 邮箱验证（选填）
-  if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+  if (formData.email && !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
     showToast('邮箱格式不正确')
     return false
   }

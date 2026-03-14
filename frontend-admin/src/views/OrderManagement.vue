@@ -406,8 +406,10 @@ const fetchOrderList = async () => {
     // 同步 currentPage 与 queryParams.page
     currentPage.value = queryParams.page + 1
   } catch (error) {
-    ElMessage.error('获取订单列表失败')
-    console.error('获取订单列表失败:', error)
+    ElMessage.error('获取订单列表失败，请重试')
+    if (import.meta.env.DEV) {
+      console.error('Error fetching order list:', error)
+    }
   } finally {
     loading.value = false
   }
@@ -419,7 +421,10 @@ const fetchStations = async () => {
     const res = await getStationList()
     stations.value = res.data || []
   } catch (error) {
-    console.error('获取充电站列表失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('获取充电站列表失败:', error)
+    }
+    ElMessage.error('获取充电站列表失败，请重试')
   }
 }
 
@@ -462,8 +467,10 @@ const handleViewDetail = async (row) => {
     currentOrder.value = res.data
     detailDialogVisible.value = true
   } catch (error) {
-    ElMessage.error('获取订单详情失败')
-    console.error('获取订单详情失败:', error)
+    ElMessage.error('获取订单详情失败，请重试')
+    if (import.meta.env.DEV) {
+      console.error('Error fetching order detail:', error)
+    }
   }
 }
 
@@ -500,8 +507,10 @@ const confirmRefund = async () => {
       fetchOrderList()
     } catch (error) {
       if (error !== 'cancel') {
-        ElMessage.error('退款失败')
-        console.error('退款失败:', error)
+        ElMessage.error('退款失败，请重试')
+        if (import.meta.env.DEV) {
+          console.error('Error refunding order:', error)
+        }
       }
     } finally {
       refundLoading.value = false

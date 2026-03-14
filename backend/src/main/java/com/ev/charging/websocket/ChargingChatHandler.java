@@ -7,7 +7,7 @@ import com.ev.charging.entity.User;
 import com.ev.charging.repository.ChatMessageRepository;
 import com.ev.charging.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -25,16 +25,15 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class ChargingChatHandler extends TextWebSocketHandler {
 
     // 存储每个站点的在线用户
     private static final ConcurrentHashMap<Long, Set<WebSocketSession>> stationSessions = new ConcurrentHashMap<>();
 
-    @Autowired
-    private ChatMessageRepository chatMessageRepository;
+        private final ChatMessageRepository chatMessageRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+        private final UserRepository userRepository;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -76,8 +75,10 @@ public class ChargingChatHandler extends TextWebSocketHandler {
 
         log.info("WebSocket连接建立: userId={}, stationId={}, sessionId={}", userId, stationId, session.getId());
 
-        // 发送系统消息:用户加入
-        sendSystemMessage(stationId, "用户 " + userId + " 加入了聊天");
+        // 发送系统消息:用户加入（使用昵称避免暴露userId）
+        User joinUser = userRepository.findById(userId).orElse(null);
+        String joinNickname = joinUser != null ? joinUser.getNickname() : "用户";
+        sendSystemMessage(stationId, joinNickname + " 加入了聊天");
     }
 
     @Override
@@ -173,17 +174,21 @@ public class ChargingChatHandler extends TextWebSocketHandler {
         Long userId = (Long) session.getAttributes().get("userId");
 
         // 移除会话
-        Set<WebSocketSession> sessions = stationSessions.get(stationId);
-        if (sessions != null) {
-            sessions.remove(session);
-            if (sessions.isEmpty()) {
-                stationSessions.remove(stationId);
+        if (stationId != null) {
+            Set<WebSocketSession> sessions = stationSessions.get(stationId);
+            if (sessions != null) {
+                sessions.remove(session);
+                if (sessions.isEmpty()) {
+                    stationSessions.remove(stationId);
+                }
             }
         }
 
-        // 发送系统消息:用户离开
+        // 发送系统消息:用户离开（使用昵称避免暴露userId）
         if (stationId != null && userId != null) {
-            sendSystemMessage(stationId, "用户 " + userId + " 离开了聊天");
+            User leaveUser = userRepository.findById(userId).orElse(null);
+            String leaveNickname = leaveUser != null ? leaveUser.getNickname() : "用户";
+            sendSystemMessage(stationId, leaveNickname + " 离开了聊天");
         }
     }
 

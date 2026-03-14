@@ -120,7 +120,7 @@
           <van-cell title="合计" :value="`¥${totalFee}`" value-class="total-fee" />
         </div>
 
-        <div style="margin: 16px;">
+        <div class="submit-button-wrapper">
           <van-button
             round
             block
@@ -347,5 +347,9 @@ onMounted(() => {
 
 .my-orders-section {
   margin-bottom: 12px;
+}
+
+.submit-button-wrapper {
+  margin: 16px;
 }
 </style>

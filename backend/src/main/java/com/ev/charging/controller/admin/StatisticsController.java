@@ -2,10 +2,17 @@ package com.ev.charging.controller.admin;
 
 import com.ev.charging.common.Result;
 import com.ev.charging.service.StatisticsService;
-import com.ev.charging.vo.*;
+import com.ev.charging.vo.ChargeTrendVO;
+import com.ev.charging.vo.DashboardVO;
+import com.ev.charging.vo.PileStatusDistributionVO;
+import com.ev.charging.vo.StationRankingVO;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
@@ -19,10 +26,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Slf4j
 @RestController
 @RequestMapping(value = "/admin/statistics", produces = "application/json;charset=UTF-8")
+@RequiredArgsConstructor
 public class StatisticsController {
 
-    @Autowired
-    private StatisticsService statisticsService;
+    private final StatisticsService statisticsService;
 
     /**
      * 获取仪表板数据

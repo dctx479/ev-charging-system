@@ -22,7 +22,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
@@ -163,22 +169,18 @@ public class AuthController {
     })
     @PostMapping("/logout")
     public Result<Void> logout(HttpServletRequest request) {
-        try {
-            // 从请求头提取token
-            String token = jwtUtil.extractToken(request);
-            
-            if (token != null) {
-                // 获取token剩余有效期
-                long expireSeconds = jwtUtil.getExpireSeconds(token);
-                
-                // 加入黑名单
-                tokenBlacklistService.addToBlacklist(token, expireSeconds);
-            }
-            
-            return Result.success("退出成功", null);
-        } catch (Exception e) {
-            return Result.error("退出失败，请稍后重试");
+        // 从请求头提取token
+        String token = jwtUtil.extractToken(request);
+
+        if (token != null) {
+            // 获取token剩余有效期
+            long expireSeconds = jwtUtil.getExpireSeconds(token);
+
+            // 加入黑名单
+            tokenBlacklistService.addToBlacklist(token, expireSeconds);
         }
+
+        return Result.success("退出成功", null);
     }
 
     /**
@@ -202,17 +204,13 @@ public class AuthController {
     public Result<Void> forceLogout(
             @Parameter(description = "用户ID", required = true)
             @PathVariable Long userId) {
-        try {
-            // 计算token最大有效期（秒）
-            long expireSeconds = jwtExpiration / 1000;
-            
-            // 将用户所有token加入黑名单
-            tokenBlacklistService.blacklistUserTokens(userId, expireSeconds);
-            
-            return Result.success("用户已被强制下线", null);
-        } catch (Exception e) {
-            return Result.error("操作失败，请稍后重试");
-        }
+        // 计算token最大有效期（秒）
+        long expireSeconds = jwtExpiration / 1000;
+
+        // 将用户所有token加入黑名单
+        tokenBlacklistService.blacklistUserTokens(userId, expireSeconds);
+
+        return Result.success("用户已被强制下线", null);
     }
 
     /**

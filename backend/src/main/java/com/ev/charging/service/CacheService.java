@@ -114,11 +114,14 @@ public class CacheService {
         try {
             Set<String> keys = new HashSet<>();
             redisTemplate.execute((RedisCallback<Object>) connection -> {
-                Cursor<byte[]> cursor = connection.scan(
+                try (Cursor<byte[]> cursor = connection.scan(
                     ScanOptions.scanOptions().match(pattern).count(100).build()
-                );
-                while (cursor.hasNext()) {
-                    keys.add(new String(cursor.next()));
+                )) {
+                    while (cursor.hasNext()) {
+                        keys.add(new String(cursor.next()));
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to close Redis cursor: pattern={}", pattern, e);
                 }
                 return null;
             });
@@ -186,11 +189,14 @@ public class CacheService {
         try {
             Set<String> keys = new HashSet<>();
             redisTemplate.execute((RedisCallback<Object>) connection -> {
-                Cursor<byte[]> cursor = connection.scan(
+                try (Cursor<byte[]> cursor = connection.scan(
                     ScanOptions.scanOptions().match("*").count(100).build()
-                );
-                while (cursor.hasNext()) {
-                    keys.add(new String(cursor.next()));
+                )) {
+                    while (cursor.hasNext()) {
+                        keys.add(new String(cursor.next()));
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to close Redis cursor during clearAll", e);
                 }
                 return null;
             });

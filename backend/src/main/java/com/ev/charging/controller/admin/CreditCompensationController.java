@@ -4,16 +4,23 @@ import com.ev.charging.common.Result;
 import com.ev.charging.entity.ChargeOrder;
 import com.ev.charging.entity.CreditPendingRecord;
 import com.ev.charging.entity.User;
+import com.ev.charging.exception.BusinessException;
 import com.ev.charging.repository.ChargeOrderRepository;
 import com.ev.charging.repository.CreditPendingRecordRepository;
 import com.ev.charging.repository.UserRepository;
 import com.ev.charging.scheduler.CreditRetryScheduler;
 import com.ev.charging.service.CarbonCreditService;
 import com.ev.charging.vo.CreditPendingRecordVO;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,23 +31,15 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/admin/credit-compensation")
+@RequiredArgsConstructor
 @Slf4j
 public class CreditCompensationController {
 
-    @Autowired
-    private CreditPendingRecordRepository creditPendingRecordRepository;
-
-    @Autowired
-    private CarbonCreditService carbonCreditService;
-
-    @Autowired
-    private CreditRetryScheduler creditRetryScheduler;
-
-    @Autowired
-    private ChargeOrderRepository orderRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+    private final CreditPendingRecordRepository creditPendingRecordRepository;
+    private final CarbonCreditService carbonCreditService;
+    private final CreditRetryScheduler creditRetryScheduler;
+    private final ChargeOrderRepository orderRepository;
+    private final UserRepository userRepository;
 
     /**
      * 查询所有待发放积分记录（分状态）
@@ -102,7 +101,7 @@ public class CreditCompensationController {
         log.info("管理员手动补发积分，记录ID: {}", recordId);
 
         CreditPendingRecord record = creditPendingRecordRepository.findById(recordId)
-                .orElseThrow(() -> new RuntimeException("待发放记录不存在"));
+                .orElseThrow(() -> new BusinessException("待发放记录不存在"));
 
         // 检查记录状态
         if (record.getStatus() == 1) {
@@ -204,13 +203,8 @@ public class CreditCompensationController {
     public Result<String> triggerRetry() {
         log.info("管理员手动触发积分重试任务");
 
-        try {
-            creditRetryScheduler.retryNow();
-            return Result.success("重试任务已触发，请稍后查看结果");
-        } catch (Exception e) {
-            log.error("触发重试任务失败", e);
-            return Result.error("触发重试任务失败，请稍后重试");
-        }
+        creditRetryScheduler.retryNow();
+        return Result.success("重试任务已触发，请稍后查看结果");
     }
 
     /**
@@ -225,7 +219,7 @@ public class CreditCompensationController {
         log.warn("管理员删除待发放积分记录，记录ID: {}", recordId);
 
         CreditPendingRecord record = creditPendingRecordRepository.findById(recordId)
-                .orElseThrow(() -> new RuntimeException("待发放记录不存在"));
+                .orElseThrow(() -> new BusinessException("待发放记录不存在"));
 
         if (record.getStatus() == 1) {
             return Result.error("该记录已成功发放，不允许删除");

@@ -109,6 +109,20 @@ public class ChargingStationService {
      * @return 充电站列表（按距离排序）
      */
     public List<StationVO> getNearbyStations(Double latitude, Double longitude, Double radius) {
+        // 参数验证
+        if (latitude == null || longitude == null || radius == null) {
+            throw new IllegalArgumentException("经纬度和搜索半径不能为空");
+        }
+        if (latitude < -90 || latitude > 90) {
+            throw new IllegalArgumentException("纬度范围必须在 -90 到 90 之间");
+        }
+        if (longitude < -180 || longitude > 180) {
+            throw new IllegalArgumentException("经度范围必须在 -180 到 180 之间");
+        }
+        if (radius <= 0 || radius > 100) {
+            throw new IllegalArgumentException("搜索半径必须在 0-100 公里之间");
+        }
+
         // 转换为BigDecimal进行计算
         BigDecimal latBD = BigDecimal.valueOf(latitude);
         BigDecimal lonBD = BigDecimal.valueOf(longitude);

@@ -6,6 +6,11 @@ export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
 
+  // 检查关键环境变量
+  if (!env.VITE_AMAP_KEY && mode === 'production') {
+    console.warn('[WARNING] VITE_AMAP_KEY 未设置，地图功能将不可用。请在 .env 文件中配置高德地图 API Key。')
+  }
+
   return {
     plugins: [
       vue(),

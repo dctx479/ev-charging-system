@@ -1,6 +1,9 @@
 package com.ev.charging.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -25,12 +28,15 @@ public class StopDischargeDTO {
      */
     @Schema(description = "实际放电量（kWh）", example = "15.5", requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0")
     @NotNull(message = "放电量不能为空")
+    @DecimalMin(value = "0", message = "放电量不能为负数")
     private BigDecimal energyAmount;
 
     /**
      * 放电后电池健康度
      */
     @Schema(description = "放电后电池健康度（0-100）", example = "94", minimum = "0", maximum = "100")
+    @Min(value = 0, message = "电池健康度不能小于0")
+    @Max(value = 100, message = "电池健康度不能大于100")
     private Byte batteryHealthAfter;
 
     /**
@@ -38,5 +44,7 @@ public class StopDischargeDTO {
      * 用于监控电池放电过程，记录日志和统计
      */
     @Schema(description = "最终SOC（电池电量百分比，0-100）", example = "45", minimum = "0", maximum = "100")
+    @Min(value = 0, message = "最终SOC不能小于0")
+    @Max(value = 100, message = "最终SOC不能大于100")
     private Integer finalSoc;
 }

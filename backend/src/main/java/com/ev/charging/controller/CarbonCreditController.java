@@ -1,8 +1,8 @@
 package com.ev.charging.controller;
 
 import com.ev.charging.common.Result;
-import com.ev.charging.dto.CreditRecordVO;
-import com.ev.charging.dto.CreditStatisticsVO;
+import com.ev.charging.vo.CreditRecordVO;
+import com.ev.charging.vo.CreditStatisticsVO;
 import com.ev.charging.dto.RedeemDTO;
 import com.ev.charging.entity.CreditPendingRecord;
 import com.ev.charging.repository.CreditPendingRecordRepository;
@@ -17,8 +17,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
@@ -35,9 +41,7 @@ import java.util.stream.Collectors;
 public class CarbonCreditController {
 
     private final CarbonCreditService carbonCreditService;
-
-    @Autowired
-    private CreditPendingRecordRepository creditPendingRecordRepository;
+    private final CreditPendingRecordRepository creditPendingRecordRepository;
 
     /**
      * 获取积分余额
@@ -108,13 +112,8 @@ public class CarbonCreditController {
     public Result<Integer> dailyCheckIn(
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId) {
         log.info("用户 {} 请求签到", userId);
-        try {
-            Integer credits = carbonCreditService.dailyCheckIn(userId);
-            return Result.success("签到成功，获得" + credits + "积分", credits);
-        } catch (RuntimeException e) {
-            log.warn("签到失败: {}", e.getMessage());
-            return Result.error("签到失败，请稍后重试");
-        }
+        Integer credits = carbonCreditService.dailyCheckIn(userId);
+        return Result.success("签到成功，获得" + credits + "积分", credits);
     }
 
     /**
@@ -163,13 +162,8 @@ public class CarbonCreditController {
             @Parameter(description = "兑换信息", required = true)
             @Valid @RequestBody RedeemDTO redeemDTO) {
         log.info("用户 {} 兑换积分: {}", userId, redeemDTO.getAmount());
-        try {
-            carbonCreditService.redeemCredits(userId, redeemDTO.getAmount(), redeemDTO.getDescription());
-            return Result.success("兑换成功", null);
-        } catch (RuntimeException e) {
-            log.warn("兑换失败: {}", e.getMessage());
-            return Result.error("兑换失败，请稍后重试");
-        }
+        carbonCreditService.redeemCredits(userId, redeemDTO.getAmount(), redeemDTO.getDescription());
+        return Result.success("兑换成功", null);
     }
 
     /**
@@ -281,8 +275,20 @@ public class CarbonCreditController {
     public Result<Void> exchangeProduct(
             @Parameter(hidden = true) @RequestAttribute("userId") Long userId,
             @RequestBody Map<String, Object> data) {
-        Long productId = Long.valueOf(data.get("productId").toString());
-        int quantity = data.get("quantity") != null ? Integer.parseInt(data.get("quantity").toString()) : 1;
+        if (data.get("productId") == null) {
+            return Result.error("商品ID不能为空");
+        }
+        Long productId;
+        int quantity;
+        try {
+            productId = Long.valueOf(data.get("productId").toString());
+            quantity = data.get("quantity") != null ? Integer.parseInt(data.get("quantity").toString()) : 1;
+        } catch (NumberFormatException e) {
+            return Result.error("参数格式错误");
+        }
+        if (quantity < 1 || quantity > 99) {
+            return Result.error("兑换数量必须在1-99之间");
+        }
 
         // 模拟商品积分需求
         Map<Long, Integer> productCredits = Map.of(1L, 500, 2L, 800, 3L, 1200);
@@ -292,12 +298,8 @@ public class CarbonCreditController {
             return Result.error("商品不存在");
         }
 
-        try {
-            carbonCreditService.redeemCredits(userId, requiredCredits, "兑换商品 #" + productId);
-            return Result.success("兑换成功", null);
-        } catch (RuntimeException e) {
-            return Result.error("兑换失败，请稍后重试");
-        }
+        carbonCreditService.redeemCredits(userId, requiredCredits, "兑换商品 #" + productId);
+        return Result.success("兑换成功", null);
     }
 
     /**

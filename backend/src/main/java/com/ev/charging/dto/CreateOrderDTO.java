@@ -55,11 +55,13 @@ public class CreateOrderDTO {
      */
     @Schema(description = "电池容量（kWh）", example = "75.0", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "电池容量不能为空")
+    @DecimalMin(value = "1", message = "电池容量不能小于1kWh")
     private BigDecimal batteryCapacity;
 
     /**
      * 充电功率（kW）
      */
     @Schema(description = "充电功率（kW）", example = "120.0")
+    @DecimalMin(value = "0.1", message = "充电功率必须大于0")
     private BigDecimal chargePower;
 }

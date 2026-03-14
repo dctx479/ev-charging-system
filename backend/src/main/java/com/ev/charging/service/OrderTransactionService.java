@@ -16,9 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
-import static com.ev.charging.constant.OrderConstants.*;
+import static com.ev.charging.constant.OrderConstants.ORDER_STATUS_CHARGING;
+import static com.ev.charging.constant.OrderConstants.PAYMENT_STATUS_UNPAID;
+import static com.ev.charging.service.OrderService.generateOrderNo;
 
 /**
  * 订单事务服务
@@ -90,13 +91,6 @@ public class OrderTransactionService {
                 orderNo, userId, dto.getPileId(), calledQueue.isPresent());
 
         return order.getId();
-    }
-
-    /**
-     * 生成订单号
-     */
-    private String generateOrderNo() {
-        return "CO" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
     }
 
     /**

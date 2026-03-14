@@ -8,17 +8,21 @@ import com.ev.charging.entity.ChargingStation;
 import com.ev.charging.entity.CreditPendingRecord;
 import com.ev.charging.entity.Payment;
 import com.ev.charging.entity.QueueRecord;
+import com.ev.charging.exception.BusinessException;
+import com.ev.charging.mq.event.OrderCompletedEvent;
+import com.ev.charging.mq.event.OrderPaidEvent;
+import com.ev.charging.mq.producer.MessageProducer;
 import com.ev.charging.repository.ChargeOrderRepository;
 import com.ev.charging.repository.ChargingPileRepository;
 import com.ev.charging.repository.ChargingStationRepository;
 import com.ev.charging.repository.CreditPendingRecordRepository;
 import com.ev.charging.repository.PaymentRepository;
 import com.ev.charging.repository.QueueRecordRepository;
+import com.ev.charging.util.RedisLockService;
 import com.ev.charging.vo.ChargeFeeDetail;
 import com.ev.charging.vo.OrderDetailVO;
-import com.ev.charging.util.RedisLockService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +35,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.math.BigDecimal;
 
-import static com.ev.charging.constant.OrderConstants.*;
+import static com.ev.charging.constant.OrderConstants.ORDER_STATUS_CANCELLED;
+import static com.ev.charging.constant.OrderConstants.ORDER_STATUS_CHARGING;
+import static com.ev.charging.constant.OrderConstants.ORDER_STATUS_COMPLETED;
+import static com.ev.charging.constant.OrderConstants.PAYMENT_STATUS_PAID;
+import static com.ev.charging.constant.OrderConstants.PAYMENT_STATUS_UNPAID;
+
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -45,40 +54,20 @@ import java.util.UUID;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class OrderService {
 
-    @Autowired
-    private ChargeOrderRepository orderRepository;
-
-    @Autowired
-    private ChargingPileRepository pileRepository;
-
-    @Autowired
-    private ChargingStationRepository stationRepository;
-
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private CarbonCreditService carbonCreditService;
-
-    @Autowired
-    private com.ev.charging.mq.producer.MessageProducer messageProducer;
-
-    @Autowired
-    private QueueRecordRepository queueRecordRepository;
-
-    @Autowired
-    private CreditPendingRecordRepository creditPendingRecordRepository;
-
-    @Autowired
-    private RedisLockService redisLockService;
-
-    @Autowired
-    private CacheService cacheService;
-
-    @Autowired
-    private OrderTransactionService orderTransactionService;
+    private final ChargeOrderRepository orderRepository;
+    private final ChargingPileRepository pileRepository;
+    private final ChargingStationRepository stationRepository;
+    private final PaymentRepository paymentRepository;
+    private final CarbonCreditService carbonCreditService;
+    private final MessageProducer messageProducer;
+    private final QueueRecordRepository queueRecordRepository;
+    private final CreditPendingRecordRepository creditPendingRecordRepository;
+    private final RedisLockService redisLockService;
+    private final CacheService cacheService;
+    private final OrderTransactionService orderTransactionService;
 
     // 排队状态常量
     private static final byte QUEUE_STATUS_QUEUING = 1;    // 排队中
@@ -105,17 +94,17 @@ public class OrderService {
         String lockKey = RedisLockService.buildPileLockKey(dto.getPileId());
         String lockOwner = redisLockService.tryLockWithOwner(lockKey, 30);
         if (lockOwner == null) {
-            throw new RuntimeException("充电桩正在被占用，请稍后重试");
+            throw new BusinessException("充电桩正在被占用，请稍后重试");
         }
 
         try {
             // 在事务外进行预检查（减少事务持有时间）
             ChargingPile pile = pileRepository.findById(dto.getPileId())
-                    .orElseThrow(() -> new RuntimeException("充电桩不存在: ID=" + dto.getPileId()));
+                    .orElseThrow(() -> new BusinessException("充电桩不存在: ID=" + dto.getPileId()));
 
             Optional<ChargeOrder> existingOrder = orderRepository.findByUserIdAndOrderStatus(userId, ORDER_STATUS_CHARGING);
             if (existingOrder.isPresent()) {
-                throw new RuntimeException("您有正在进行的充电订单，请先结束后再开始新的充电");
+                throw new BusinessException("您有正在进行的充电订单，请先结束后再开始新的充电");
             }
 
             Optional<QueueRecord> calledQueue = queueRecordRepository.findByUserIdAndQueueStatusIn(
@@ -125,14 +114,14 @@ public class OrderService {
             if (calledQueue.isPresent()) {
                 QueueRecord queueRecord = calledQueue.get();
                 if (!queueRecord.getAssignedPileId().equals(dto.getPileId())) {
-                    throw new RuntimeException("您已被叫号，请使用分配的充电桩：" +
+                    throw new BusinessException("您已被叫号，请使用分配的充电桩：" +
                             pileRepository.findById(queueRecord.getAssignedPileId())
                                     .map(ChargingPile::getPileNo)
                                     .orElse("未知"));
                 }
             } else {
                 if (pile.getStatus() == null || pile.getStatus() != 1) {
-                    throw new RuntimeException("充电桩不可用，当前状态：" + getStatusText(pile.getStatus()) +
+                    throw new BusinessException("充电桩不可用，当前状态：" + getStatusText(pile.getStatus()) +
                             "。如需使用，请先加入排队");
                 }
 
@@ -140,32 +129,22 @@ public class OrderService {
                         pile.getStationId(), QUEUE_STATUS_QUEUING
                 );
                 if (queueCount > 0) {
-                    throw new RuntimeException("当前站点有" + queueCount + "人排队，请先加入排队");
+                    throw new BusinessException("当前站点有" + queueCount + "人排队，请先加入排队");
                 }
             }
 
             Optional<ChargeOrder> pileOrder = orderRepository.findByPileIdAndOrderStatus(dto.getPileId(), ORDER_STATUS_CHARGING);
             if (pileOrder.isPresent()) {
-                throw new RuntimeException("该充电桩正在使用中");
+                throw new BusinessException("该充电桩正在使用中");
             }
 
             // 预检查通过后，调用独立的事务服务进行数据修改
             // 注意：使用独立Service是为了解决@Transactional自调用问题
             Long orderId = orderTransactionService.createOrderInTransaction(userId, dto, pile, calledQueue);
 
-            // 注册锁释放回调，确保在事务提交后释放锁
-            // 使用unlockSafe确保只释放自己持有的锁，防止锁过期后误删其他线程的锁
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(
-                        new TransactionSynchronization() {
-                            @Override
-                            public void afterCompletion(int status) {
-                                redisLockService.unlockSafe(lockKey, lockOwner);
-                                log.debug("事务完成后释放创建订单的分布式锁: lockKey={}, status={}", lockKey, status);
-                            }
-                        }
-                );
-            }
+            // 事务已在 createOrderInTransaction 内提交，直接释放锁
+            redisLockService.unlockSafe(lockKey, lockOwner);
+            log.debug("订单创建成功后释放分布式锁: lockKey={}", lockKey);
 
             return orderId;
 
@@ -195,7 +174,7 @@ public class OrderService {
         String pileLockKey = RedisLockService.buildPileLockKey(pileId);
         String pileOwner = redisLockService.tryLockWithOwner(pileLockKey, 30);
         if (pileOwner == null) {
-            throw new RuntimeException("充电桩正在被占用，请稍后重试");
+            throw new BusinessException("充电桩正在被占用，请稍后重试");
         }
 
         // 用户级锁，防止同一用户并发创建多个订单
@@ -203,24 +182,24 @@ public class OrderService {
         String userOwner = redisLockService.tryLockWithOwner(userLockKey, 30);
         if (userOwner == null) {
             redisLockService.unlockSafe(pileLockKey, pileOwner);
-            throw new RuntimeException("您的操作过于频繁，请稍后重试");
+            throw new BusinessException("您的操作过于频繁，请稍后重试");
         }
 
         try {
             // 在事务外进行预检查
             ChargingPile pile = pileRepository.findById(pileId)
-                    .orElseThrow(() -> new RuntimeException("充电桩不存在: ID=" + pileId));
+                    .orElseThrow(() -> new BusinessException("充电桩不存在: ID=" + pileId));
 
             // 2. 检查用户是否有进行中的订单
             Optional<ChargeOrder> existingOrder = orderRepository.findByUserIdAndOrderStatus(userId, ORDER_STATUS_CHARGING);
             if (existingOrder.isPresent()) {
-                throw new RuntimeException("用户已有正在进行的充电订单: userId=" + userId + ", orderId=" + existingOrder.get().getId());
+                throw new BusinessException("用户已有正在进行的充电订单: userId=" + userId + ", orderId=" + existingOrder.get().getId());
             }
 
             // 3. 检查充电桩是否被占用
             Optional<ChargeOrder> pileOrder = orderRepository.findByPileIdAndOrderStatus(pileId, ORDER_STATUS_CHARGING);
             if (pileOrder.isPresent()) {
-                throw new RuntimeException("该充电桩正在使用中: pileId=" + pileId + ", orderId=" + pileOrder.get().getId());
+                throw new BusinessException("该充电桩正在使用中: pileId=" + pileId + ", orderId=" + pileOrder.get().getId());
             }
 
             // 调用事务服务进行创建操作
@@ -291,32 +270,32 @@ public class OrderService {
     public void endCharging(Long orderId, Long userId, Integer endSoc) {
         // 1. 查询订单
         ChargeOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("订单不存在: orderId=" + orderId));
+                .orElseThrow(() -> new BusinessException("订单不存在: orderId=" + orderId));
 
         // 安全检查: 验证订单所有权，防止IDOR漏洞
         if (!order.getUserId().equals(userId)) {
             log.warn("IDOR攻击尝试: userId={} 试图结束 orderId={} (实际归属 userId={})",
                     userId, orderId, order.getUserId());
-            throw new RuntimeException("无权操作此订单");
+            throw new BusinessException("无权操作此订单");
         }
 
         if (order.getOrderStatus() == null || order.getOrderStatus() != ORDER_STATUS_CHARGING) {
-            throw new RuntimeException("订单状态异常，无法结束充电: orderId=" + orderId +
+            throw new BusinessException("订单状态异常，无法结束充电: orderId=" + orderId +
                     ", currentStatus=" + order.getOrderStatus());
         }
 
         // 2. 验证endSoc合法性
         if (endSoc == null || endSoc < 0 || endSoc > 100) {
-            throw new RuntimeException("结束电量百分比无效: endSoc=" + endSoc + "，必须在0-100之间");
+            throw new BusinessException("结束电量百分比无效: endSoc=" + endSoc + "，必须在0-100之间");
         }
 
         Byte startSoc = order.getStartSoc();
         if (startSoc == null || startSoc < 0 || startSoc > 100) {
-            throw new RuntimeException("起始电量异常: startSoc=" + startSoc);
+            throw new BusinessException("起始电量异常: startSoc=" + startSoc);
         }
 
         if (endSoc <= startSoc.intValue()) {
-            throw new RuntimeException("结束电量必须大于起始电量: startSoc=" + startSoc +
+            throw new BusinessException("结束电量必须大于起始电量: startSoc=" + startSoc +
                     ", endSoc=" + endSoc);
         }
 
@@ -329,9 +308,14 @@ public class OrderService {
 
         // 4. 服务端计算充电量：基于充电桩实际功率和充电时长
         ChargingPile pile = pileRepository.findById(order.getPileId())
-                .orElseThrow(() -> new RuntimeException("充电桩不存在: pileId=" + order.getPileId()));
+                .orElseThrow(() -> new BusinessException("充电桩不存在: pileId=" + order.getPileId()));
 
-        BigDecimal serverChargeAmount = pile.getPower()
+        BigDecimal pilePower = pile.getPower();
+        if (pilePower == null || pilePower.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn("充电桩功率无效，使用默认值7kW: pileId={}, power={}", pile.getId(), pilePower);
+            pilePower = BigDecimal.valueOf(7);
+        }
+        BigDecimal serverChargeAmount = pilePower
                 .multiply(BigDecimal.valueOf(chargeDuration))
                 .divide(BigDecimal.valueOf(60.0), 2, RoundingMode.HALF_UP);
         // 安全上限：充电量不超过合理电池容量(200kWh，覆盖大部分EV车型)
@@ -343,7 +327,7 @@ public class OrderService {
             serverChargeAmount = BigDecimal.valueOf(0.01); // 最小0.01 kWh
         }
 
-        order.setEndSoc(endSoc != null ? endSoc.byteValue() : null);
+        order.setEndSoc(endSoc.byteValue());
         order.setChargeAmount(serverChargeAmount);
         // effectively final copy for use in anonymous inner class (TransactionSynchronization callback)
         final BigDecimal finalChargeAmount = serverChargeAmount;
@@ -375,7 +359,7 @@ public class OrderService {
                         @Override
                         public void afterCommit() {
                             try {
-                                com.ev.charging.mq.event.OrderCompletedEvent event = com.ev.charging.mq.event.OrderCompletedEvent.builder()
+                                OrderCompletedEvent event = OrderCompletedEvent.builder()
                                         .orderId(order.getId())
                                         .orderNo(order.getOrderNo())
                                         .userId(order.getUserId())
@@ -400,7 +384,7 @@ public class OrderService {
         } else {
             // 不在事务中时，直接发送（不应该走到这里）
             try {
-                com.ev.charging.mq.event.OrderCompletedEvent event = com.ev.charging.mq.event.OrderCompletedEvent.builder()
+                OrderCompletedEvent event = OrderCompletedEvent.builder()
                         .orderId(order.getId())
                         .orderNo(order.getOrderNo())
                         .userId(order.getUserId())
@@ -425,38 +409,29 @@ public class OrderService {
     }
 
     /**
-     * 计算电费（峰谷平电价 - O(1) 时段区间交集算法）
+     * 计算各时段分钟数（峰谷平时段区间交集算法）
      * 谷时（23:00-07:00）: 0.4元/kWh
      * 平时（07:00-10:00, 15:00-18:00, 21:00-23:00）: 0.8元/kWh
      * 峰时（10:00-15:00, 18:00-21:00）: 1.2元/kWh
+     *
+     * @return long[3] = {valleyMinutes, flatMinutes, peakMinutes}
      */
-    private BigDecimal calculateElectricityFee(LocalDateTime startTime, LocalDateTime endTime, BigDecimal totalAmount) {
-        long totalMinutes = ChronoUnit.MINUTES.between(startTime, endTime);
-        if (totalMinutes <= 0) {
-            return BigDecimal.ZERO;
-        }
-
-        // 定义一天内各时段区间（分钟，从0点算起）
-        // Valley: [0,420) [1380,1440)  Flat: [420,600) [900,1080) [1260,1380)  Peak: [600,900) [1080,1260)
+    private long[] calculatePeriodMinutes(LocalDateTime startTime, LocalDateTime endTime) {
         long valleyMinutes = 0, flatMinutes = 0, peakMinutes = 0;
+        long[][] periodDefs = {{0,420},{420,600},{600,900},{900,1080},{1080,1260},{1260,1380},{1380,1440}};
+        String[] types = {"valley","flat","peak","flat","peak","flat","valley"};
 
-        // 按整天 + 零头 处理，对每天最多遍历7个区间（O(days)，通常≤1）
         LocalDateTime cursor = startTime;
         while (cursor.isBefore(endTime)) {
             LocalDateTime dayStart = cursor.toLocalDate().atStartOfDay();
             LocalDateTime dayEnd = dayStart.plusDays(1);
-            // 本天内的充电区段
             LocalDateTime segStart = cursor;
             LocalDateTime segEnd = endTime.isBefore(dayEnd) ? endTime : dayEnd;
-            long segStartMin = ChronoUnit.MINUTES.between(dayStart, segStart);
-            long segEndMin   = ChronoUnit.MINUTES.between(dayStart, segEnd);
-
-            // 各时段定义：[start, end) 单位=分钟
-            long[][] periods = {{0,420},{420,600},{600,900},{900,1080},{1080,1260},{1260,1380},{1380,1440}};
-            String[] types   = {"valley","flat","peak","flat","peak","flat","valley"};
-            for (int i = 0; i < periods.length; i++) {
-                long lo = Math.max(segStartMin, periods[i][0]);
-                long hi = Math.min(segEndMin,   periods[i][1]);
+            long sMin = ChronoUnit.MINUTES.between(dayStart, segStart);
+            long eMin = ChronoUnit.MINUTES.between(dayStart, segEnd);
+            for (int i = 0; i < periodDefs.length; i++) {
+                long lo = Math.max(sMin, periodDefs[i][0]);
+                long hi = Math.min(eMin, periodDefs[i][1]);
                 if (hi > lo) {
                     switch (types[i]) {
                         case "valley" -> valleyMinutes += hi - lo;
@@ -467,8 +442,21 @@ public class OrderService {
             }
             cursor = dayEnd;
         }
+        return new long[]{valleyMinutes, flatMinutes, peakMinutes};
+    }
 
-        // 按各时段分钟占比分配充电量
+    /**
+     * 计算电费（峰谷平电价）
+     */
+    private BigDecimal calculateElectricityFee(LocalDateTime startTime, LocalDateTime endTime, BigDecimal totalAmount) {
+        long totalMinutes = ChronoUnit.MINUTES.between(startTime, endTime);
+        if (totalMinutes <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        long[] periodMins = calculatePeriodMinutes(startTime, endTime);
+        long valleyMinutes = periodMins[0], flatMinutes = periodMins[1], peakMinutes = periodMins[2];
+
         BigDecimal valleyAmount = totalAmount.multiply(BigDecimal.valueOf(valleyMinutes))
                 .divide(BigDecimal.valueOf(totalMinutes), 4, RoundingMode.HALF_UP);
         BigDecimal flatAmount = totalAmount.multiply(BigDecimal.valueOf(flatMinutes))
@@ -505,32 +493,8 @@ public class OrderService {
                     .build();
         }
 
-        // 使用 O(1) 时段区间交集算法（与 calculateElectricityFee 保持一致）
-        long valleyMinutes = 0, flatMinutes = 0, peakMinutes = 0;
-        long[][] periodDefs = {{0,420},{420,600},{600,900},{900,1080},{1080,1260},{1260,1380},{1380,1440}};
-        String[] types      = {"valley","flat","peak","flat","peak","flat","valley"};
-
-        LocalDateTime cursor = startTime;
-        while (cursor.isBefore(endTime)) {
-            LocalDateTime dayStart = cursor.toLocalDate().atStartOfDay();
-            LocalDateTime dayEnd = dayStart.plusDays(1);
-            LocalDateTime segStart = cursor;
-            LocalDateTime segEnd = endTime.isBefore(dayEnd) ? endTime : dayEnd;
-            long sMin = ChronoUnit.MINUTES.between(dayStart, segStart);
-            long eMin = ChronoUnit.MINUTES.between(dayStart, segEnd);
-            for (int i = 0; i < periodDefs.length; i++) {
-                long lo = Math.max(sMin, periodDefs[i][0]);
-                long hi = Math.min(eMin, periodDefs[i][1]);
-                if (hi > lo) {
-                    switch (types[i]) {
-                        case "valley" -> valleyMinutes += hi - lo;
-                        case "flat"   -> flatMinutes   += hi - lo;
-                        case "peak"   -> peakMinutes   += hi - lo;
-                    }
-                }
-            }
-            cursor = dayEnd;
-        }
+        long[] periodMins = calculatePeriodMinutes(startTime, endTime);
+        long valleyMinutes = periodMins[0], flatMinutes = periodMins[1], peakMinutes = periodMins[2];
 
         BigDecimal valleyAmount = totalAmount.multiply(BigDecimal.valueOf(valleyMinutes))
                 .divide(BigDecimal.valueOf(totalMinutes), 4, RoundingMode.HALF_UP);
@@ -573,7 +537,8 @@ public class OrderService {
                 predicates.add(cb.equal(root.get("paymentStatus"), paymentStatus));
             }
             if (orderNo != null && !orderNo.trim().isEmpty()) {
-                predicates.add(cb.like(root.get("orderNo"), "%" + orderNo.trim() + "%"));
+                String escaped = orderNo.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+                predicates.add(cb.like(root.get("orderNo"), "%" + escaped + "%"));
             }
             return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
@@ -590,7 +555,7 @@ public class OrderService {
      */
     public OrderDetailVO getOrderDetail(Long orderId) {
         ChargeOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("订单不存在: orderId=" + orderId));
+                .orElseThrow(() -> new BusinessException("订单不存在: orderId=" + orderId));
 
         // 批量查询关联数据
         ChargingPile pile = pileRepository.findById(order.getPileId())
@@ -627,14 +592,14 @@ public class OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void cancelOrder(Long orderId, Long userId) {
         ChargeOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("订单不存在: orderId=" + orderId));
+                .orElseThrow(() -> new BusinessException("订单不存在: orderId=" + orderId));
 
         if (!order.getUserId().equals(userId)) {
-            throw new RuntimeException("无权取消此订单: orderId=" + orderId + ", userId=" + userId);
+            throw new BusinessException("无权取消此订单: orderId=" + orderId + ", userId=" + userId);
         }
 
         if (order.getOrderStatus() == null || order.getOrderStatus() != ORDER_STATUS_CHARGING) {
-            throw new RuntimeException("只能取消进行中的订单: orderId=" + orderId +
+            throw new BusinessException("只能取消进行中的订单: orderId=" + orderId +
                     ", currentStatus=" + order.getOrderStatus());
         }
 
@@ -645,7 +610,7 @@ public class OrderService {
 
         // 更新充电桩状态为"空闲"
         ChargingPile pile = pileRepository.findById(order.getPileId())
-                .orElseThrow(() -> new RuntimeException("充电桩不存在: pileId=" + order.getPileId()));
+                .orElseThrow(() -> new BusinessException("充电桩不存在: pileId=" + order.getPileId()));
         pile.setStatus((byte) 1);
         pileRepository.save(pile);
         cacheService.evictPileCache(pile.getId());
@@ -660,14 +625,14 @@ public class OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void payOrder(Long orderId, Long userId, Byte paymentMethod) {
         ChargeOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("订单不存在: orderId=" + orderId));
+                .orElseThrow(() -> new BusinessException("订单不存在: orderId=" + orderId));
 
         if (!order.getUserId().equals(userId)) {
-            throw new RuntimeException("无权支付此订单: orderId=" + orderId + ", userId=" + userId);
+            throw new BusinessException("无权支付此订单: orderId=" + orderId + ", userId=" + userId);
         }
 
         if (order.getOrderStatus() == null || order.getOrderStatus() != ORDER_STATUS_COMPLETED) {
-            throw new RuntimeException("只能支付已完成的订单: orderId=" + orderId +
+            throw new BusinessException("只能支付已完成的订单: orderId=" + orderId +
                     ", currentStatus=" + order.getOrderStatus());
         }
 
@@ -683,11 +648,11 @@ public class OrderService {
             // 原子更新失败：可能是重复支付或订单状态异常
             // 重新查询当前状态以提供更好的错误信息
             ChargeOrder currentOrder = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new RuntimeException("订单不存在: orderId=" + orderId));
+                    .orElseThrow(() -> new BusinessException("订单不存在: orderId=" + orderId));
             if (currentOrder.getPaymentStatus() != null && currentOrder.getPaymentStatus() == PAYMENT_STATUS_PAID) {
-                throw new RuntimeException("订单已支付: orderId=" + orderId);
+                throw new BusinessException("订单已支付: orderId=" + orderId);
             }
-            throw new RuntimeException("订单支付状态异常: orderId=" + orderId + ", currentStatus=" + currentOrder.getPaymentStatus());
+            throw new BusinessException("订单支付状态异常: orderId=" + orderId + ", currentStatus=" + currentOrder.getPaymentStatus());
         }
 
         // 原子更新成功后，创建支付记录
@@ -723,7 +688,7 @@ public class OrderService {
                         @Override
                         public void afterCommit() {
                             try {
-                                com.ev.charging.mq.event.OrderPaidEvent paidEvent = com.ev.charging.mq.event.OrderPaidEvent.builder()
+                                OrderPaidEvent paidEvent = OrderPaidEvent.builder()
                                         .orderId(orderId)
                                         .orderNo(order.getOrderNo())
                                         .userId(userId)
@@ -745,7 +710,7 @@ public class OrderService {
             // 不在事务中时，直接发送（不应该走到这里，因为方法标记了@Transactional）
             log.warn("payOrder不在事务同步上下文中，直接发送MQ消息: orderId={}", orderId);
             try {
-                com.ev.charging.mq.event.OrderPaidEvent paidEvent = com.ev.charging.mq.event.OrderPaidEvent.builder()
+                OrderPaidEvent paidEvent = OrderPaidEvent.builder()
                         .orderId(orderId)
                         .orderNo(order.getOrderNo())
                         .userId(userId)
@@ -835,7 +800,7 @@ public class OrderService {
     /**
      * 生成订单号
      */
-    private String generateOrderNo() {
+    static String generateOrderNo() {
         return "CO" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
     }
 

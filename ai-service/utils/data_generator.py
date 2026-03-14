@@ -50,12 +50,12 @@ def generate_duration_data(n_samples=10000):
         duration_hours *= np.random.uniform(0.97, 1.03)
 
         data.append({
-            'battery_capacity': battery_capacity,
-            'current_soc': current_soc,
-            'target_soc': target_soc,
+            'battery_capacity': round(battery_capacity, 2),
+            'current_soc': round(max(0, min(100, current_soc)), 2),
+            'target_soc': round(max(0, min(100, target_soc)), 2),
             'pile_power': pile_power,
-            'temperature': temperature,
-            'duration_hours': max(0.1, duration_hours)  # 确保大于0
+            'temperature': round(temperature, 1),
+            'duration_hours': round(max(0.1, duration_hours), 4)  # 确保大于0
         })
 
     return data
@@ -142,13 +142,13 @@ def generate_fault_data(n_samples=5000):
         is_fault = 1 if fault_score > 0.55 else 0
 
         data.append({
-            'total_charge_count': total_charge_count,
-            'total_charge_amount': total_charge_amount,
-            'days_since_last_maintenance': days_since_last_maintenance,
-            'health_score': health_score,
-            'avg_daily_usage': avg_daily_usage,
-            'voltage_fluctuation': voltage_fluctuation,
-            'fault_history_count': fault_history_count,
+            'total_charge_count': max(0, total_charge_count),
+            'total_charge_amount': round(max(0, total_charge_amount), 2),
+            'days_since_last_maintenance': max(0, days_since_last_maintenance),
+            'health_score': round(max(0, min(100, health_score)), 2),
+            'avg_daily_usage': round(max(0, avg_daily_usage), 2),
+            'voltage_fluctuation': round(max(0, voltage_fluctuation), 2),
+            'fault_history_count': max(0, fault_history_count),
             'is_fault': is_fault
         })
 

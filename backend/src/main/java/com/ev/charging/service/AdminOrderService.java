@@ -3,15 +3,31 @@ package com.ev.charging.service;
 import com.ev.charging.constant.OrderConstants;
 import com.ev.charging.dto.AdminOrderQueryDTO;
 import com.ev.charging.dto.RefundDTO;
-import com.ev.charging.entity.*;
-import com.ev.charging.repository.*;
-import com.ev.charging.service.CacheService;
+import com.ev.charging.entity.ChargeOrder;
+import com.ev.charging.entity.ChargingPile;
+import com.ev.charging.entity.ChargingStation;
+import com.ev.charging.entity.Payment;
+import com.ev.charging.entity.User;
+import com.ev.charging.exception.BusinessException;
+import com.ev.charging.repository.ChargeOrderRepository;
+import com.ev.charging.repository.ChargingPileRepository;
+import com.ev.charging.repository.ChargingStationRepository;
+import com.ev.charging.repository.PaymentRepository;
+import com.ev.charging.repository.UserRepository;
 import com.ev.charging.vo.AdminOrderListVO;
 import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,7 +37,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static com.ev.charging.constant.OrderConstants.*;
+import static com.ev.charging.constant.OrderConstants.ORDER_STATUS_CHARGING;
+import static com.ev.charging.constant.OrderConstants.PAYMENT_STATUS_PAID;
+import static com.ev.charging.constant.OrderConstants.PAYMENT_STATUS_REFUNDED;
+import static com.ev.charging.constant.OrderConstants.PAYMENT_STATUS_REFUNDING;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -36,25 +55,15 @@ import java.util.List;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class AdminOrderService {
 
-    @Autowired
-    private ChargeOrderRepository orderRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private ChargingPileRepository pileRepository;
-
-    @Autowired
-    private ChargingStationRepository stationRepository;
-
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private CacheService cacheService;
+    private final ChargeOrderRepository orderRepository;
+    private final UserRepository userRepository;
+    private final ChargingPileRepository pileRepository;
+    private final ChargingStationRepository stationRepository;
+    private final PaymentRepository paymentRepository;
+    private final CacheService cacheService;
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -125,7 +134,7 @@ public class AdminOrderService {
      */
     public AdminOrderListVO getOrderDetail(Long orderId) {
         ChargeOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("订单不存在"));
+                .orElseThrow(() -> new BusinessException("订单不存在"));
 
         // 批量查询关联数据
         User user = userRepository.findById(order.getUserId()).orElse(null);
@@ -141,7 +150,7 @@ public class AdminOrderService {
     @Transactional
     public void updateOrderStatus(Long orderId, Byte newStatus) {
         ChargeOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("订单不存在"));
+                .orElseThrow(() -> new BusinessException("订单不存在"));
 
         Byte oldStatus = order.getOrderStatus();
         order.setOrderStatus(newStatus);
@@ -169,20 +178,20 @@ public class AdminOrderService {
     public void refundOrder(Long orderId, RefundDTO refundDTO) {
         // 1. 查询订单
         ChargeOrder order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("订单不存在"));
+                .orElseThrow(() -> new BusinessException("订单不存在"));
 
         // 2. 校验订单状态（先检查已退款/退款中，再检查是否已支付）
         if (order.getPaymentStatus() == PAYMENT_STATUS_REFUNDING || order.getPaymentStatus() == PAYMENT_STATUS_REFUNDED) {
-            throw new RuntimeException("订单已退款，请勿重复操作");
+            throw new BusinessException("订单已退款，请勿重复操作");
         }
 
         if (order.getPaymentStatus() != PAYMENT_STATUS_PAID) {
-            throw new RuntimeException("订单未支付，无法退款");
+            throw new BusinessException("订单未支付，无法退款");
         }
 
         // 3. 查询支付记录
         Payment payment = paymentRepository.findByOrderId(orderId)
-                .orElseThrow(() -> new RuntimeException("支付记录不存在"));
+                .orElseThrow(() -> new BusinessException("支付记录不存在"));
 
         // 4. 更新订单支付状态为"已退款" — 处理乐观锁冲突
         order.setPaymentStatus(PAYMENT_STATUS_REFUNDED);
@@ -190,7 +199,7 @@ public class AdminOrderService {
             orderRepository.save(order);
         } catch (OptimisticLockingFailureException e) {
             log.warn("订单保存时发生乐观锁冲突: orderId={}", orderId);
-            throw new RuntimeException("操作冲突，订单状态已被其他操作修改，请刷新后重试");
+            throw new BusinessException("操作冲突，订单状态已被其他操作修改，请刷新后重试");
         }
 
         // 5. 更新支付记录状态为"已退款" — 处理乐观锁冲突
@@ -199,7 +208,7 @@ public class AdminOrderService {
             paymentRepository.save(payment);
         } catch (OptimisticLockingFailureException e) {
             log.warn("支付记录保存时发生乐观锁冲突: orderId={}", orderId);
-            throw new RuntimeException("操作冲突，支付记录已被其他操作修改，请刷新后重试");
+            throw new BusinessException("操作冲突，支付记录已被其他操作修改，请刷新后重试");
         }
 
         // 6. 退还用户余额（如果是余额支付）— 使用原子操作防止并发竞态
@@ -280,7 +289,7 @@ public class AdminOrderService {
                 .collect(java.util.stream.Collectors.toMap(ChargingStation::getId, s -> s));
 
         // 创建Excel工作簿
-        Workbook workbook = new XSSFWorkbook();
+        try (Workbook workbook = new XSSFWorkbook()) {
         Sheet sheet = workbook.createSheet("充电订单");
 
         // 创建标题行样式
@@ -334,11 +343,11 @@ public class AdminOrderService {
         // 将工作簿写入字节数组
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         workbook.write(outputStream);
-        workbook.close();
 
         log.info("导出订单Excel: 共{}条记录", orders.size());
 
         return outputStream.toByteArray();
+        }
     }
 
     /**

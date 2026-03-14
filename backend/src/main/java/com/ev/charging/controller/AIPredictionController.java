@@ -1,19 +1,25 @@
 package com.ev.charging.controller;
 
 import com.ev.charging.common.Result;
-import com.ev.charging.dto.AIPredictionDTO.*;
+import com.ev.charging.dto.AIPredictionDTO.DurationPredictRequest;
+import com.ev.charging.dto.AIPredictionDTO.DurationPredictResponse;
+import com.ev.charging.dto.AIPredictionDTO.FaultPredictRequest;
+import com.ev.charging.dto.AIPredictionDTO.FaultPredictResponse;
 import com.ev.charging.service.AIPredictionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * AI预测控制器
@@ -24,10 +30,10 @@ import jakarta.validation.Valid;
 @Validated
 @Slf4j
 @Tag(name = "AI预测接口", description = "AI智能预测相关接口")
+@RequiredArgsConstructor
 public class AIPredictionController {
 
-    @Autowired
-    private AIPredictionService aiPredictionService;
+    private final AIPredictionService aiPredictionService;
 
     /**
      * 充电时长预测
@@ -50,18 +56,8 @@ public class AIPredictionController {
                 request.getBatteryCapacity(), request.getCurrentSoc(),
                 request.getTargetSoc(), request.getChargePower());
 
-        try {
-            DurationPredictResponse response = aiPredictionService.predictChargeDuration(request);
-            return Result.success(response);
-
-        } catch (IllegalArgumentException e) {
-            log.warn("充电时长预测参数错误: {}", e.getMessage());
-            return Result.error(400, e.getMessage());
-
-        } catch (Exception e) {
-            log.error("充电时长预测失败: {}", e.getMessage(), e);
-            return Result.error(500, "充电时长预测服务暂时不可用，请稍后重试");
-        }
+        DurationPredictResponse response = aiPredictionService.predictChargeDuration(request);
+        return Result.success(response);
     }
 
     /**
@@ -85,18 +81,8 @@ public class AIPredictionController {
                 request.getTotalChargeCount(), request.getHealthScore(),
                 request.getDaysSinceLastMaintenance());
 
-        try {
-            FaultPredictResponse response = aiPredictionService.predictFault(request);
-            return Result.success(response);
-
-        } catch (IllegalArgumentException e) {
-            log.warn("故障预测参数错误: {}", e.getMessage());
-            return Result.error(400, e.getMessage());
-
-        } catch (Exception e) {
-            log.error("故障预测失败: {}", e.getMessage(), e);
-            return Result.error(500, "故障预测服务暂时不可用，请稍后重试");
-        }
+        FaultPredictResponse response = aiPredictionService.predictFault(request);
+        return Result.success(response);
     }
 
     /**

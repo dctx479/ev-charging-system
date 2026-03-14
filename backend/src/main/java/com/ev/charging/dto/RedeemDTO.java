@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
@@ -26,5 +27,6 @@ public class RedeemDTO {
      */
     @Schema(description = "兑换描述/用途", example = "兑换10元充电优惠券", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "兑换描述不能为空")
+    @Size(max = 200, message = "兑换描述长度不能超过200个字符")
     private String description;
 }

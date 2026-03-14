@@ -89,7 +89,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         log.warn("非法参数异常 [{}] {}: {}",
                 request.getMethod(), request.getRequestURI(), e.getMessage());
-        return Result.error(ResultCode.PARAM_ERROR.getCode(), e.getMessage());
+        return Result.error(ResultCode.PARAM_ERROR.getCode(), "请求参数不合法");
     }
 
     /**

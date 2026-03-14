@@ -1,5 +1,6 @@
 package com.ev.charging.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ev.charging.security.JwtAuthenticationEntryPoint;
 import com.ev.charging.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Spring Security 安全配置
@@ -41,6 +43,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175}")
+    private String allowedOrigins;
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
@@ -52,17 +59,24 @@ public class SecurityConfig {
         http
             // 禁用CSRF(因为使用JWT，不需要CSRF保护)
             .csrf(AbstractHttpConfigurer::disable)
-            
+
             // 配置CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            
+
+            // 安全响应头
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.deny())
+                .contentTypeOptions(contentType -> {})
+            )
+
             // 配置异常处理
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     response.setContentType("application/json;charset=UTF-8");
                     response.setStatus(403);
-                    response.getWriter().write("{\"code\":403,\"message\":\"权限不足，拒绝访问\",\"data\":null}");
+                    Map<String, Object> body = Map.of("code", 403, "message", "权限不足，拒绝访问", "data", "");
+                    response.getWriter().write(OBJECT_MAPPER.writeValueAsString(body));
                 })
             )
             
@@ -183,15 +197,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 允许的来源 - 仅限具体的前端地址（开发环境）
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-            "http://localhost:5173",   // 用户端前端
-            "http://localhost:5174",   // 管理后台前端
-            "http://localhost:5175",   // 用户端前端（备用端口）
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-            "http://127.0.0.1:5175"
-        ));
+        // 允许的来源 - 从配置读取（支持环境变量 CORS_ALLOWED_ORIGINS 覆盖）
+        configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
 
         // 允许的HTTP方法 - 限定为必要的方法
         configuration.setAllowedMethods(Arrays.asList(

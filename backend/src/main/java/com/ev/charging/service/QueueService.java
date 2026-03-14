@@ -11,7 +11,6 @@ import com.ev.charging.vo.QueueStatusVO;
 import com.ev.charging.vo.StationQueueInfoVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -44,9 +43,8 @@ public class QueueService {
      * 自注入代理，用于让 checkExpiredCalls 正确触发 callNext 的 @Transactional AOP 代理，
      * 避免 this.callNext() 绕过 Spring 代理导致事务不生效的问题。
      */
-    @Autowired
     @Lazy
-    private QueueService self;
+    private final QueueService self;
 
     // 排队状态常量（对应 queue_status 字段：1排队中 2已分配 3已取消 4超时）
     private static final byte STATUS_QUEUING = 1;    // 排队中
@@ -59,6 +57,9 @@ public class QueueService {
 
     // 预估平均充电时长（分钟）
     private static final int AVERAGE_CHARGE_DURATION = 30;
+
+    // 叫号过期前预警时间（分钟）
+    private static final int CALL_EXPIRE_WARNING_MINUTES = 5;
 
     /**
      * 加入排队
@@ -156,6 +157,7 @@ public class QueueService {
      * @param userId 用户ID
      * @return 排队状态
      */
+    @Transactional(readOnly = true)
     public QueueStatusVO getQueueStatus(Long userId) {
         // 查询用户当前的排队记录（排队中或已分配）
         Optional<QueueRecord> recordOpt = queueRecordRepository.findByUserIdAndQueueStatusIn(
@@ -494,16 +496,16 @@ public class QueueService {
             peopleAhead = 0;
         }
 
-        // 计算过期时间：叫号时间 + 15分钟
+        // 计算过期时间：叫号时间 + CALL_TIMEOUT_MINUTES分钟
         LocalDateTime expireTime = null;
         if (record.getAssignedTime() != null) {
-            expireTime = record.getAssignedTime().plusMinutes(15);
+            expireTime = record.getAssignedTime().plusMinutes(CALL_TIMEOUT_MINUTES);
         }
 
         // 计算是否即将过号：叫号后还剩5分钟以内
         boolean willExpireSoon = false;
         if (record.getAssignedTime() != null && expireTime != null) {
-            LocalDateTime fiveMinsBeforeExpire = expireTime.minusMinutes(5);
+            LocalDateTime fiveMinsBeforeExpire = expireTime.minusMinutes(CALL_EXPIRE_WARNING_MINUTES);
             willExpireSoon = LocalDateTime.now().isAfter(fiveMinsBeforeExpire) &&
                             LocalDateTime.now().isBefore(expireTime);
         }

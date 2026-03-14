@@ -1,6 +1,6 @@
 package com.ev.charging.security;
 
-import com.ev.charging.service.TokenBlacklistService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ev.charging.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * JWT认证过滤器
@@ -35,6 +36,8 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
@@ -143,16 +146,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * 发送401未授权响应
+     * 安全修复: 使用JSON转义防止注入，避免String.format直接拼接
      */
     private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        
-        String jsonResponse = String.format(
-            "{\"code\":401,\"message\":\"%s\",\"data\":null}",
-            message
-        );
-        response.getWriter().write(jsonResponse);
+
+        Map<String, Object> body = Map.of("code", 401, "message", message, "data", "");
+        response.getWriter().write(OBJECT_MAPPER.writeValueAsString(body));
     }
 }

@@ -5,6 +5,7 @@ import com.ev.charging.entity.CarbonCreditRecord;
 import com.ev.charging.entity.CreditExchangeRecord;
 import com.ev.charging.entity.CreditProduct;
 import com.ev.charging.entity.User;
+import com.ev.charging.exception.BusinessException;
 import com.ev.charging.repository.CarbonCreditRecordRepository;
 import com.ev.charging.repository.CreditExchangeRecordRepository;
 import com.ev.charging.repository.CreditProductRepository;
@@ -17,28 +18,29 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @Tag(name = "积分商城", description = "积分商品浏览、兑换记录查询等功能")
 @RestController
 @RequestMapping(value = "/credit-products", produces = "application/json;charset=UTF-8")
+@RequiredArgsConstructor
 public class CreditProductController {
 
-    @Autowired
-    private CreditProductRepository productRepository;
-
-    @Autowired
-    private CreditExchangeRecordRepository exchangeRecordRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private CarbonCreditRecordRepository carbonCreditRecordRepository;
+    private final CreditProductRepository productRepository;
+    private final CreditExchangeRecordRepository exchangeRecordRepository;
+    private final UserRepository userRepository;
+    private final CarbonCreditRecordRepository carbonCreditRecordRepository;
 
     /**
      * 获取商品列表
@@ -159,7 +161,7 @@ public class CreditProductController {
         // 注意：必须抛异常而非return Result.error，否则@Transactional不会回滚已扣减的积分
         int stockUpdated = productRepository.decrementStockAtomically(product.getId());
         if (stockUpdated == 0) {
-            throw new RuntimeException("商品库存不足");
+            throw new BusinessException("商品库存不足");
         }
 
         // 8. 创建兑换记录

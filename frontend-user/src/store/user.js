@@ -7,7 +7,9 @@ function safeJsonParse(jsonString, defaultValue = null) {
   try {
     return JSON.parse(jsonString)
   } catch (error) {
-    console.error('JSON解析失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('JSON解析失败:', error)
+    }
     return defaultValue
   }
 }
@@ -40,7 +42,9 @@ function isTokenValid(token) {
     const now = Math.floor(Date.now() / 1000)
     return payload.exp > now + BUFFER_SECONDS
   } catch (error) {
-    console.error('Token验证失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('Token验证失败:', error)
+    }
     return false
   }
 }
@@ -87,7 +91,9 @@ export const useUserStore = defineStore('user', () => {
       await authLogout()
     } catch (error) {
       // 即使后端调用失败也继续清理本地状态
-      console.error('后端登出失败:', error)
+      if (import.meta.env.DEV) {
+        console.error('后端登出失败:', error)
+      }
     }
     token.value = ''
     userInfo.value = null

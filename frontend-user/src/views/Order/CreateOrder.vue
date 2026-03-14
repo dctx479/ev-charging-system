@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { getPileDetail } from '@/api/pile'
@@ -116,6 +116,9 @@ const showModePicker = ref(false)
 const prediction = ref(null)
 const predicting = ref(false)
 const creating = ref(false)
+const loadingPile = ref(false)
+
+let errorTimerRef = null
 
 const chargeModeOptions = [
   { text: '充满', value: 1 },
@@ -159,7 +162,7 @@ onMounted(async () => {
   // 验证参数
   if (!pileId.value || isNaN(pileId.value)) {
     showToast('充电桩参数错误')
-    setTimeout(() => router.back(), 1500)
+    errorTimerRef = setTimeout(() => router.back(), 1500)
     return
   }
 
@@ -167,20 +170,22 @@ onMounted(async () => {
 })
 
 const loadPileInfo = async () => {
+  loadingPile.value = true
   try {
     const res = await getPileDetail(pileId.value)
-    console.log('Pile detail response:', res.data)
     pileInfo.value = res.data.pile || res.data
     stationInfo.value = res.data.station || {}
 
     // 获取充电功率，确保是数字
     const power = pileInfo.value.power || 120
     formData.value.chargePower = parseFloat(power)
-
-    console.log('充电桩功率已设置:', formData.value.chargePower, 'kW')
   } catch (error) {
-    console.error('加载充电桩信息失败:', error)
+    if (import.meta.env.DEV) {
+      console.error('加载充电桩信息失败:', error)
+    }
     showToast('加载充电桩信息失败')
+  } finally {
+    loadingPile.value = false
   }
 }
 
@@ -255,16 +260,12 @@ const getPrediction = async () => {
       temperature: 25
     }
 
-    console.log('AI预测请求参数:', requestData)
-
     // 通过后端API代理调用AI服务
     const response = await request({
       url: '/ai/predict/duration',
       method: 'post',
       data: requestData
     })
-
-    console.log('AI prediction response:', response)
 
     // 后端返回格式: { code: 200, data: { duration, charge_amount, estimated_cost } }
     if (response.data) {
@@ -278,9 +279,11 @@ const getPrediction = async () => {
       throw new Error('预测数据为空')
     }
   } catch (error) {
-    console.error('AI预测失败', error)
+    if (import.meta.env.DEV) {
+      console.error('AI预测失败', error)
+      console.error('错误详情:', error.response?.data)
+    }
     const errorMsg = error.response?.data?.message || error.message || 'AI预测服务暂不可用'
-    console.error('错误详情:', error.response?.data)
     showToast(errorMsg)
   } finally {
     predicting.value = false
@@ -317,6 +320,14 @@ const handleCreateOrder = async () => {
 const onBack = () => {
   router.back()
 }
+
+onBeforeUnmount(() => {
+  // 清理所有定时器
+  if (errorTimerRef) {
+    clearTimeout(errorTimerRef)
+    errorTimerRef = null
+  }
+})
 </script>
 
 <style scoped lang="scss">

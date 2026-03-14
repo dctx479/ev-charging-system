@@ -189,6 +189,7 @@ const refreshing = ref(false)
 const showMap = ref(false)
 const selectedPoi = ref(null)
 let mapInstance = null
+let mapInitTimer = null
 
 // 加载POI数据
 const loadPoiData = async () => {
@@ -287,8 +288,12 @@ const handlePoiClick = (poi) => {
   showMap.value = true
 
   // 初始化地图
-  setTimeout(() => {
+  if (mapInitTimer) {
+    clearTimeout(mapInitTimer)
+  }
+  mapInitTimer = setTimeout(() => {
     initMap(poi)
+    mapInitTimer = null
   }, 100)
 }
 
@@ -380,6 +385,11 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  // 清理定时器
+  if (mapInitTimer) {
+    clearTimeout(mapInitTimer)
+    mapInitTimer = null
+  }
   // 销毁地图实例
   if (mapInstance) {
     mapInstance.destroy()

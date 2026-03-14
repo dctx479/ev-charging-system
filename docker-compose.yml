@@ -93,7 +93,7 @@ services:
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
       RABBITMQ_DEFAULT_VHOST: /
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
@@ -152,7 +152,7 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_USER:-admin}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin123}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
       # AI服务配置
       AI_SERVICE_URL: http://ai-service:5000
       AI_CONNECT_TIMEOUT: ${AI_CONNECT_TIMEOUT:-5000}
